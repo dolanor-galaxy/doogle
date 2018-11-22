@@ -1,0 +1,18 @@
+// doogle's peer interface definition
+syntax = "proto3";
+
+package doogle;
+
+// The greeting service definition.
+service Dooglle {
+    // Sends a greeting
+    rpc Ping (Empty) returns (PingReply) {}
+}
+
+// The request message containing the user's name.
+message Empty {}
+
+// The response message containing the greetings
+message PingReply {
+    string message = 1;
+}
