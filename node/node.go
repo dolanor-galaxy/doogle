@@ -4,11 +4,8 @@ import (
 	"context"
 	"net"
 
-	pb "github.com/mathetake/doogle/proto"
+	pb "github.com/mathetake/doogle/grpc"
 )
-
-// address for indices and nodes
-type doogleAddress string
 
 type PeerParameters struct {
 	publicKeyPath  string
@@ -26,15 +23,15 @@ type Node struct {
 	routingTable map[int][]*nodeInfo
 
 	// distributed hash table points to addresses of items
-	dht map[string][]doogleAddress
+	dht map[doogleAddressStr][]doogleAddressStr
 
 	// map of address to item's pointer
-	items map[doogleAddress]*item
+	items map[doogleAddressStr]*item
 
 	// for certification
 	publicKey  string
 	nonce      string
-	difficulty string
+	difficulty int
 }
 
 // nodeInfo contains the information for connecting nodes
@@ -44,8 +41,9 @@ type nodeInfo struct {
 	port  int
 }
 
-func (n *Node) Ping(ctx context.Context, in *pb.Empty) (*pb.PingReply, error) {
-	return &pb.PingReply{Message: "Pong"}, nil
+func (n *Node) Ping(ctx context.Context, in *pb.NodeCertificate) (*pb.StringMessage, error) {
+	// if NodeCertificate is not empty, validate and store it in dht
+	return &pb.StringMessage{Message: "Pong"}, nil
 }
 
 func NewNode(params *PeerParameters) (*Node, error) {
@@ -58,4 +56,4 @@ func NewNode(params *PeerParameters) (*Node, error) {
 	return &n, nil
 }
 
-var _ pb.DooglleServer = &Node{}
+// var _ pb.DooglleServer = &Node{}

@@ -10,7 +10,7 @@ message StringMessage {
 }
 
 message NodeInfo {
-    string doogleAddress =1;
+    bytes doogleAddress =1;
     string host = 2;
     string port = 3;
 }
@@ -36,7 +36,7 @@ service Dooglle {
     rpc FindNode(FindNodeRequest) returns(FindeNodeReply);
 
     // health check
-    rpc Ping (NodeCertificate) returns (NodeCertificate);
+    rpc Ping (NodeCertificate) returns (StringMessage);
 
     // the following endponts can be accessed from outside of the network.
     rpc PingTo(NodeInfo) returns (Empty); // request to send PingRequest to given node
@@ -68,7 +68,7 @@ message Items {
 
 message FindIndexRequest {
     NodeCertificate certificate = 1;
-    string doogleAddress = 2;
+    bytes doogleAddress = 2;
 }
 
 message FindIndexReply {
@@ -81,7 +81,7 @@ message FindIndexReply {
 
 message FindNodeRequest {
     NodeCertificate certificate = 1;
-    string doogleAddress = 2;
+    bytes doogleAddress = 2;
 }
 
 message FindeNodeReply {

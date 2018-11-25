@@ -7,8 +7,8 @@ import (
 
 	"time"
 
+	pb "github.com/mathetake/doogle/grpc"
 	"github.com/mathetake/doogle/node"
-	pb "github.com/mathetake/doogle/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -34,7 +34,7 @@ func runClient() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.Ping(ctx, &pb.Empty{})
+	r, err := c.Ping(ctx, &pb.NodeCertificate{})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
