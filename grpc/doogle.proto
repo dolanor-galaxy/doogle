@@ -20,12 +20,12 @@ message NodeInfos {
 }
 
 message NodeCertificate {
-    string publicKey = 1;
+    bytes publicKey = 1;
     string nonce = 2;
     int32 difficulty = 3;
 }
 
-service Dooglle {
+service Doogle {
     // Store give index
     rpc StoreItem(StoreItemRequest) returns (Empty);
 

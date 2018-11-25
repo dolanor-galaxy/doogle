@@ -1,12 +1,12 @@
 # doogle 
 
-_Web search of the people, by the people, for the people_
+_Web search of the people, by the people, for the people with Go._
 
 [![CircleCI](https://circleci.com/gh/mathetake/doogle.svg?style=shield)](https://circleci.com/gh/mathetake/doogle)
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 
-doogle is a PoC implementation of decentralized search engine based on gRPC written in Go.
+doogle is a PoC implementation of __decentralized search engine__ based on gRPC written in Go.
 
 For PoC purposes only. __NOT__ to use in production environment.
 
@@ -18,6 +18,16 @@ Baumgart, Ingmar, and Sebastian Mies. "S/kademlia: A practicable approach toward
 ### local estimation of PageRank with `WorldNode`
 Parreira, Josiane Xavier, et al. "Efficient and decentralized pagerank approximation in a peer-to-peer web search network." Proceedings of the 32nd international conference on Very large data bases. VLDB Endowment, 2006.
 
+
+## development
+
+- install go, grpc, protc, go-grpc, etc.
+
+- if you modify doogle.proto, then run:
+
+```bash
+protoc -I grpc/ grpc/doogle.proto --go_out=plugins=grpc:grpc
+```
 
 ## References
 

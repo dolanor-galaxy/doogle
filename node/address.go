@@ -13,27 +13,29 @@ const (
 	maxIteration  = 10e5
 )
 
+var h = sha1.New()
+
 // address for indices and nodes
 type doogleAddress []byte
 
 type doogleAddressStr string
 
-func newAddress(host, port, pk string, difficulty int) (doogleAddress, string, error) {
-	h := sha1.New()
+func newAddress(host, port string, pk []byte, difficulty int) (doogleAddress, []byte, error) {
 
-	var nonce = ""
-	var bStr = host + port + pk
-	var ret = h.Sum([]byte(bStr))
+	var nonce []byte
+	var err error
+	var bStr = host + port
+	var ret = h.Sum(append([]byte(bStr), pk...))
 	var isValid bool = false
 
 	// solve cryptographic puzzle
 	for i := 0; i < maxIteration; i++ {
-		bNonce, err := getNonce()
+		nonce, err = getNonce()
 		if err != nil {
 			continue
 		}
 
-		sol := h.Sum(append(ret, bNonce...))
+		sol := h.Sum(append(ret, nonce...))
 		var count int
 		for j := 0; j < difficulty; j++ {
 			if sol[j] != 0 {
@@ -45,7 +47,6 @@ func newAddress(host, port, pk string, difficulty int) (doogleAddress, string, e
 
 		if count == difficulty {
 			isValid = true
-			nonce = string(bNonce)
 			break
 		}
 	}
@@ -54,11 +55,25 @@ func newAddress(host, port, pk string, difficulty int) (doogleAddress, string, e
 		return ret, nonce, nil
 	}
 
-	return nil, "", errors.Errorf("could not solve puzzle")
+	return nil, nil, errors.Errorf("could not solve puzzle")
 }
 
 func (da doogleAddress) isValid() bool {
 	return len(da) == addressLength
+}
+
+func verifyAddress(a doogleAddress, host, port string, pk, nonce []byte, difficulty int) bool {
+	actual := h.Sum(append([]byte(host+port), pk...))
+	if string(a) != string(actual) {
+		return false
+	}
+	sol := h.Sum(append(actual, nonce...))
+	for i := 0; i < difficulty; i++ {
+		if sol[i] != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func getNonce() ([]byte, error) {
@@ -79,11 +94,19 @@ func (da doogleAddress) xor(a doogleAddress) (doogleAddress, error) {
 	return ret, nil
 }
 
-func (da doogleAddress) getHashDistance(a doogleAddress) (doogleAddressStr, error) {
+func (da doogleAddress) getHashDistance(a doogleAddress) (doogleAddress, error) {
 	x, err := da.xor(a)
 	if err != nil {
-		return "", errors.Wrap(err, "xor computation failed")
+		return nil, errors.Wrap(err, "xor computation failed")
 	}
+	return x, nil
+}
 
-	return doogleAddressStr(x), nil
+func (da doogleAddress) lessThan(a doogleAddress) bool {
+	for i := addressLength - 1; i >= 0; i-- {
+		if da[i] != a[i] {
+			return da[i] < a[i]
+		}
+	}
+	return true
 }
