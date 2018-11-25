@@ -3,11 +3,11 @@
 package node
 
 type item struct {
-	url string
-	id  address
+	url   string
+	dAddr doogleAddress
 
 	// outgoing hyperlinks
-	edges []address
+	edges []doogleAddress
 
 	// localRank represents computed locally PageRank
 	localRank float64

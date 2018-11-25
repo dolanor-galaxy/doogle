@@ -1,27 +1,27 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
-	"context"
 
-	pb "github.com/mathetake/doogle/grpc"
+	"time"
+
+	"github.com/mathetake/doogle/node"
+	pb "github.com/mathetake/doogle/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"github.com/mathetake/doogle/node"
-	"time"
 )
 
 const (
-	port = ":50051"
+	port    = ":50051"
 	address = "localhost:50051"
 )
 
 func main() {
-	go func () {runServer()}()
+	go func() { runServer() }()
 	runClient()
 }
-
 
 // for testing purpose
 func runClient() {
@@ -46,6 +46,9 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
+	lis.Addr()
+
 	s := grpc.NewServer()
 	pb.RegisterDooglleServer(s, &node.Node{})
 	// Register reflection service on gRPC server.

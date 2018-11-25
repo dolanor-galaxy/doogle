@@ -1,0 +1,95 @@
+// doogle's peer interface definition
+syntax = "proto3";
+
+package doogle;
+
+message Empty {}
+
+message StringMessage {
+    string message = 1;
+}
+
+message NodeInfo {
+    string doogleAddress =1;
+    string host = 2;
+    string port = 3;
+}
+
+message NodeInfos {
+    repeated NodeInfo infos = 1;
+}
+
+message NodeCertificate {
+    string publicKey = 1;
+    string nonce = 2;
+    int32 difficulty = 3;
+}
+
+service Dooglle {
+    // Store give index
+    rpc StoreItem(StoreItemRequest) returns (Empty);
+
+    // find index of given key
+    rpc FindIndex(FindIndexRequest) returns(FindIndexReply);
+
+    // return k closed nodes to given address
+    rpc FindNode(FindNodeRequest) returns(FindeNodeReply);
+
+    // health check
+    rpc Ping (NodeCertificate) returns (NodeCertificate);
+
+    // the following endponts can be accessed from outside of the network.
+    rpc PingTo(NodeInfo) returns (Empty); // request to send PingRequest to given node
+    rpc GetIndex(StringMessage) returns(GetIndexReply); // get index of given query
+    rpc PostUrl(StringMessage) returns (Empty); // post url in order for it to be indexed
+}
+
+message StoreItemRequest {
+    NodeCertificate certificate = 1;
+    message Item {
+        string url = 1;
+        repeated string indicies = 2;
+    }
+}
+
+message FoundIndex {
+    string url = 1;
+    repeated string indicies = 2;
+}
+
+message Item {
+    string url = 1;
+    double localRank = 2;
+}
+
+message Items {
+    repeated Item items = 1;
+}
+
+message FindIndexRequest {
+    NodeCertificate certificate = 1;
+    string doogleAddress = 2;
+}
+
+message FindIndexReply {
+    NodeCertificate certificate = 1;
+    oneof result {
+        NodeInfos nodeinfos = 2;
+        Items items = 3;
+    }
+}
+
+message FindNodeRequest {
+    NodeCertificate certificate = 1;
+    string doogleAddress = 2;
+}
+
+message FindeNodeReply {
+    NodeCertificate certificate = 1;
+    NodeInfos nodeinfos = 2;
+}
+
+message GetIndexReply {
+    // TODO: add paging options
+    repeated string urls = 1;
+}
