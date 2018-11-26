@@ -10,32 +10,29 @@ import (
 const (
 	addressLength = 20
 	nonceLength   = 10
-	maxIteration  = 10e5
+	maxIteration  = 10e8
 )
 
-var h = sha1.New()
-
 // address for indices and nodes
-type doogleAddress []byte
+type doogleAddress [addressLength]byte
 
 type doogleAddressStr string
 
 func newAddress(host, port string, pk []byte, difficulty int) (doogleAddress, []byte, error) {
-
-	var nonce []byte
-	var err error
 	var bStr = host + port
-	var ret = h.Sum(append([]byte(bStr), pk...))
-	var isValid bool = false
+	var ret = sha1.Sum(append([]byte(bStr), pk...))
 
 	// solve cryptographic puzzle
+	var err error
+	var nonce []byte
+	var isValid = false
 	for i := 0; i < maxIteration; i++ {
 		nonce, err = getNonce()
 		if err != nil {
 			continue
 		}
 
-		sol := h.Sum(append(ret, nonce...))
+		sol := sha1.Sum(append(ret[:addressLength], nonce...))
 		var count int
 		for j := 0; j < difficulty; j++ {
 			if sol[j] != 0 {
@@ -55,19 +52,16 @@ func newAddress(host, port string, pk []byte, difficulty int) (doogleAddress, []
 		return ret, nonce, nil
 	}
 
-	return nil, nil, errors.Errorf("could not solve puzzle")
+	return doogleAddress{}, nil, errors.Errorf("could not solve puzzle")
 }
 
-func (da doogleAddress) isValid() bool {
-	return len(da) == addressLength
-}
-
-func verifyAddress(a doogleAddress, host, port string, pk, nonce []byte, difficulty int) bool {
-	actual := h.Sum(append([]byte(host+port), pk...))
-	if string(a) != string(actual) {
+func verifyAddress(da doogleAddress, host, port string, pk, nonce []byte, difficulty int) bool {
+	actual := sha1.Sum(append([]byte(host+port), pk...))
+	if da != actual {
 		return false
 	}
-	sol := h.Sum(append(actual, nonce...))
+
+	sol := sha1.Sum(append(actual[:addressLength], nonce...))
 	for i := 0; i < int(difficulty); i++ {
 		if sol[i] != 0 {
 			return false
@@ -82,20 +76,16 @@ func getNonce() ([]byte, error) {
 	return b, err
 }
 
-func (da doogleAddress) xor(a doogleAddress) (doogleAddress, error) {
-	if a.isValid() {
-		return nil, errors.Errorf("invalid address: ")
-	}
-
-	ret := make([]byte, addressLength)
+func (da doogleAddress) xor(a doogleAddress) doogleAddress {
+	ret := doogleAddress{}
 	for i := 0; i < addressLength; i++ {
 		ret[i] = da[i] ^ a[i]
 	}
-	return ret, nil
+	return ret
 }
 
-func (da doogleAddress) lessThan(a doogleAddress) bool {
-	for i := addressLength - 1; i >= 0; i-- {
+func (da doogleAddress) lessThanEqual(a doogleAddress) bool {
+	for i := 0; i < addressLength; i++ {
 		if da[i] != a[i] {
 			return da[i] < a[i]
 		}

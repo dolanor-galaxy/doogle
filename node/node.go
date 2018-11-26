@@ -50,7 +50,10 @@ type nodeInfo struct {
 	port  string
 }
 
-func (n *Node) isValidSender(ctx context.Context, da doogleAddress, pk, nonce []byte, difficulty int) bool {
+func (n *Node) isValidSender(ctx context.Context, rawAddr []byte, pk, nonce []byte, difficulty int) bool {
+	var da doogleAddress
+	copy(da[:], rawAddr[:addressLength])
+
 	if pr, ok := peer.FromContext(ctx); ok {
 		addr := strings.Split(pr.Addr.String(), ":")
 
