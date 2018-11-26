@@ -30,7 +30,7 @@ func runClient() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewDooglleClient(conn)
+	c := pb.NewDoogleClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -46,11 +46,8 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-
-	lis.Addr()
-
 	s := grpc.NewServer()
-	pb.RegisterDooglleServer(s, &node.Node{})
+	pb.RegisterDoogleServer(s, &node.Node{})
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {

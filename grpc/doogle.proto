@@ -20,9 +20,10 @@ message NodeInfos {
 }
 
 message NodeCertificate {
-    bytes publicKey = 1;
-    string nonce = 2;
-    int32 difficulty = 3;
+    bytes doogleAddress = 1;
+    bytes publicKey = 2;
+    bytes nonce = 3;
+    int32 difficulty = 4;
 }
 
 service Doogle {

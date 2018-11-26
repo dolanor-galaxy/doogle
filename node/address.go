@@ -68,7 +68,7 @@ func verifyAddress(a doogleAddress, host, port string, pk, nonce []byte, difficu
 		return false
 	}
 	sol := h.Sum(append(actual, nonce...))
-	for i := 0; i < difficulty; i++ {
+	for i := 0; i < int(difficulty); i++ {
 		if sol[i] != 0 {
 			return false
 		}
@@ -92,14 +92,6 @@ func (da doogleAddress) xor(a doogleAddress) (doogleAddress, error) {
 		ret[i] = da[i] ^ a[i]
 	}
 	return ret, nil
-}
-
-func (da doogleAddress) getHashDistance(a doogleAddress) (doogleAddress, error) {
-	x, err := da.xor(a)
-	if err != nil {
-		return nil, errors.Wrap(err, "xor computation failed")
-	}
-	return x, nil
 }
 
 func (da doogleAddress) lessThan(a doogleAddress) bool {
