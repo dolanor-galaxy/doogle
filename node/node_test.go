@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -10,17 +11,18 @@ import (
 
 	"gotest.tools/assert"
 
-	"google.golang.org/grpc/reflection"
-
 	pb "github.com/mathetake/doogle/grpc"
 	"google.golang.org/grpc"
 )
 
 const (
 	localhost = "localhost"
-	port1     = ":3843"
-	port2     = ":3844"
-	port3     = ":3839"
+	port1     = ":3841"
+	port2     = ":3842"
+	port3     = ":3833"
+	port4     = ":3834"
+	port5     = ":3835"
+	port6     = ":3836"
 )
 
 var testServers = []struct {
@@ -30,6 +32,9 @@ var testServers = []struct {
 	{port1, &Node{}},
 	{port2, &Node{}},
 	{port3, &Node{}},
+	{port4, &Node{}},
+	{port5, &Node{}},
+	{port6, &Node{}},
 }
 
 func TestMain(m *testing.M) {
@@ -48,7 +53,6 @@ func runServer(port string, node *Node) {
 	s := grpc.NewServer()
 	pb.RegisterDoogleServer(s, node)
 	go func() {
-		reflection.Register(s)
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
@@ -57,15 +61,21 @@ func runServer(port string, node *Node) {
 }
 
 func TestPing(t *testing.T) {
-	conn, err := grpc.Dial(localhost+port1, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+	for i, cc := range testServers {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			conn, err := grpc.Dial(localhost+c.port, grpc.WithInsecure())
+			if err != nil {
+				log.Fatalf("did not connect: %v", err)
+			}
+			defer conn.Close()
+			c := pb.NewDoogleClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			r, err := c.Ping(ctx, &pb.NodeCertificate{})
+			assert.Equal(t, nil, err)
+			assert.Equal(t, "Pong", r.Message)
+		})
 	}
-	defer conn.Close()
-	c := pb.NewDoogleClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	r, err := c.Ping(ctx, &pb.NodeCertificate{})
-	assert.Equal(t, nil, err)
-	assert.Equal(t, "Pong", r.Message)
+
 }
