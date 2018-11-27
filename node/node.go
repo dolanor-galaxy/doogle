@@ -4,15 +4,13 @@ import (
 	"context"
 	"strings"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"google.golang.org/grpc"
-
 	pb "github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ed25519"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
 type item struct {
@@ -54,7 +52,7 @@ type nodeInfo struct {
 	port  string
 }
 
-func (n *Node) isValidSender(ctx context.Context, rawAddr []byte, pk, nonce []byte, difficulty int) bool {
+func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, difficulty int) bool {
 	if len(rawAddr) < addressLength {
 		return false
 	}

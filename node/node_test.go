@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/assert"
-
 	pb "github.com/mathetake/doogle/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
+	"gotest.tools/assert"
 )
 
 const (
@@ -116,12 +116,58 @@ func TestPingTo(t *testing.T) {
 			_, err = client.PingTo(ctx, &pb.NodeInfo{Host: localhost, Port: c.toPort[1:]})
 			actual := err == nil
 			assert.Equal(t, c.isErrorNil, actual)
-			if actual {
+			if !actual {
 				t.Logf("actual error message: %v", err)
 			}
 		})
 	}
 }
 
-func TestIsValidSender(t *testing.T)      {}
+type testAddr string
+
+func (ta testAddr) Network() string { return "" }
+func (ta testAddr) String() string  { return string(ta) }
+
+var _ net.Addr = testAddr("")
+
+func TestIsValidSender(t *testing.T) {
+	for i, cc := range []struct {
+		addr       string
+		rawAddr    []byte
+		pk         []byte
+		nonce      []byte
+		difficulty int
+		exp        bool
+	}{
+		{"", nil, nil, nil, 10, false},
+		{"localhost:1234", []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, nil, nil, 10, false},
+		{
+			"ab:80",
+			[]byte{137, 247, 252, 74, 101, 232, 49, 193, 122, 237, 123, 84, 199, 94, 78, 176, 92, 104, 69, 253},
+			[]byte("pk"), []byte{172, 171, 254, 98, 171, 6, 169, 186, 105, 145},
+			2,
+			true,
+		},
+		{
+			"ab:80",
+			[]byte{137, 247, 252, 74, 101, 232, 49, 193, 122, 237, 123, 84, 199, 94, 78, 176, 92, 104, 69, 253},
+			[]byte("pk"), []byte{172, 171, 254, 98, 171, 6, 169, 186, 105, 145},
+			10,
+			false,
+		},
+	} {
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			c := cc
+			p := peer.Peer{Addr: testAddr(c.addr), AuthInfo: nil}
+			ctx := context.Background()
+			ctx = peer.NewContext(ctx, &p)
+
+			node := Node{}
+			actual := node.isValidSender(ctx, c.rawAddr, c.pk, c.nonce, c.difficulty)
+			assert.Equal(t, c.exp, actual)
+		})
+
+	}
+}
+
 func TestUpdateRoutingTable(t *testing.T) {}
