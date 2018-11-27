@@ -40,9 +40,9 @@ service Doogle {
     rpc Ping (NodeCertificate) returns (StringMessage);
 
     // the following endponts can be accessed from outside of the network.
-    rpc PingTo(NodeInfo) returns (Empty); // request to send PingRequest to given node
+    rpc PingTo(NodeInfo) returns (StringMessage); // request to send PingRequest to given node
     rpc GetIndex(StringMessage) returns(GetIndexReply); // get index of given query
-    rpc PostUrl(StringMessage) returns (Empty); // post url in order for it to be indexed
+    rpc PostUrl(StringMessage) returns (StringMessage); // post url in order for it to be indexed
 }
 
 message StoreItemRequest {

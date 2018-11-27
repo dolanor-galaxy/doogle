@@ -60,7 +60,15 @@ func runServer(port string, node *Node) {
 	time.Sleep(100 * time.Millisecond)
 }
 
+// reset all member variables with node
+func resetServers() {
+	for _, ts := range testServers {
+		ts.node = &Node{}
+	}
+}
+
 func TestPing(t *testing.T) {
+	resetServers()
 	for i, cc := range testServers {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
@@ -69,13 +77,51 @@ func TestPing(t *testing.T) {
 				log.Fatalf("did not connect: %v", err)
 			}
 			defer conn.Close()
-			c := pb.NewDoogleClient(conn)
+			client := pb.NewDoogleClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			r, err := c.Ping(ctx, &pb.NodeCertificate{})
+			r, err := client.Ping(ctx, &pb.NodeCertificate{})
 			assert.Equal(t, nil, err)
 			assert.Equal(t, "Pong", r.Message)
+
+			// TODO: check if the table is updated
 		})
 	}
 
 }
+
+func TestPingTo(t *testing.T) {
+	resetServers()
+	for i, cc := range []struct {
+		fromPort   string
+		toPort     string
+		isErrorNil bool
+	}{
+		{port1, port2, true},
+		{port1, port3, true},
+		{port3, port5, true},
+		{port3, ":1231", false},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			conn, err := grpc.Dial(localhost+c.fromPort, grpc.WithInsecure())
+			if err != nil {
+				log.Fatalf("did not connect: %v", err)
+			}
+			defer conn.Close()
+			client := pb.NewDoogleClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			_, err = client.PingTo(ctx, &pb.NodeInfo{Host: localhost, Port: c.toPort[1:]})
+			actual := err == nil
+			assert.Equal(t, c.isErrorNil, actual)
+			if actual {
+				t.Logf("actual error message: %v", err)
+			}
+		})
+	}
+}
+
+func TestIsValidSender(t *testing.T)      {}
+func TestUpdateRoutingTable(t *testing.T) {}

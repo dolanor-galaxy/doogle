@@ -4,6 +4,11 @@ import (
 	"context"
 	"strings"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"google.golang.org/grpc"
+
 	pb "github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ed25519"
@@ -90,15 +95,11 @@ func (n *Node) FindNode(ctx context.Context, in *pb.FindNodeRequest) (*pb.FindeN
 	return nil, nil
 }
 
-func (n *Node) PingTo(ctx context.Context, in *pb.NodeInfo) (*pb.Empty, error) {
-	return nil, nil
-}
-
 func (n *Node) GetIndex(ctx context.Context, in *pb.StringMessage) (*pb.GetIndexReply, error) {
 	return nil, nil
 }
 
-func (n *Node) PostUrl(ctx context.Context, in *pb.StringMessage) (*pb.Empty, error) {
+func (n *Node) PostUrl(ctx context.Context, in *pb.StringMessage) (*pb.StringMessage, error) {
 	return nil, nil
 }
 
@@ -106,6 +107,27 @@ func (n *Node) Ping(ctx context.Context, in *pb.NodeCertificate) (*pb.StringMess
 	// TODO: logging the result of validation
 	n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty))
 	return &pb.StringMessage{Message: "Pong"}, nil
+}
+
+func (n *Node) PingTo(ctx context.Context, in *pb.NodeInfo) (*pb.StringMessage, error) {
+	conn, err := grpc.Dial(in.Host+":"+in.Port, grpc.WithInsecure())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	c := pb.NewDoogleClient(conn)
+	r, err := c.Ping(ctx, &pb.NodeCertificate{
+		DoogleAddress: n.dAddr[:addressLength],
+		PublicKey:     n.publicKey,
+		Nonce:         n.nonce,
+		Difficulty:    int32(n.difficulty),
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "c.Ping failed: %v", err)
+	}
+
+	return &pb.StringMessage{Message: r.Message}, nil
 }
 
 func NewNode(difficulty int, host, port string) (*Node, error) {
