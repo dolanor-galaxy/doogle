@@ -13,6 +13,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// constant network parameters
+const (
+	alpha       = 3
+	bucketSuize = 20
+)
+
 type item struct {
 	url   string
 	dAddr doogleAddress
@@ -78,8 +84,37 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, dif
 	return false
 }
 
+// update routingTable using a given nodeInfo
 func (n *Node) updateRoutingTable(info *nodeInfo) {
-	// update routingTable using given nodeInfo
+	dist := n.dAddr.xor(info.dAddr)
+
+	var idx = 159
+	for i := 0; i < addressLength; i++ {
+		var b = dist[i]
+		if b == 0 {
+			continue
+			idx -= 8
+		}
+
+		// extract most significant bit
+		var msb = 0
+		for b != 0 {
+			msb++
+			b = b >> 1
+		}
+		idx -= msb
+	}
+
+	// TODO: check duplication
+	if len(n.routingTable[idx]) < bucketSuize {
+		n.routingTable[idx] = append(n.routingTable[idx], &nodeInfo{
+			host:  info.host,
+			port:  info.port,
+			dAddr: info.dAddr,
+		})
+	} else {
+		// TODO: pop
+	}
 }
 
 func (n *Node) StoreItem(ctx context.Context, in *pb.StoreItemRequest) (*pb.Empty, error) {
