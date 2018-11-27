@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -22,19 +23,30 @@ const (
 	port3     = ":3839"
 )
 
-// set up doogle server on specified port
-func runServer(port string) {
-	srv, err := NewNode(1, "localhost", port)
-	if err != nil {
-		log.Fatal("failed to start node")
-	}
+var testServers = []struct {
+	port string
+	node *Node
+}{
+	{port1, &Node{}},
+	{port2, &Node{}},
+	{port3, &Node{}},
+}
 
+func TestMain(m *testing.M) {
+	for _, ts := range testServers {
+		runServer(ts.port, ts.node)
+	}
+	os.Exit(m.Run())
+}
+
+// set up doogle server on specified port
+func runServer(port string, node *Node) {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterDoogleServer(s, srv)
+	pb.RegisterDoogleServer(s, node)
 	go func() {
 		reflection.Register(s)
 		if err := s.Serve(lis); err != nil {
@@ -45,7 +57,6 @@ func runServer(port string) {
 }
 
 func TestPing(t *testing.T) {
-	runServer(port1)
 	conn, err := grpc.Dial(localhost+port1, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
