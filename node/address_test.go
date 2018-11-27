@@ -15,13 +15,12 @@ func TestNewAddress(t *testing.T) {
 	}{
 		{"host1", "port1", 1},
 		{"host2", "port2", 2},
-		{"host3", "port3", 3},
 	}
 
 	for i, cc := range cases {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			na, nonce, err := newAddress(c.host, c.port, nil, c.difficulty)
+			na, nonce, err := newNodeAddress(c.host, c.port, nil, c.difficulty)
 			assert.Equal(t, nil, err)
 			assert.Equal(t, true, verifyAddress(na, c.host, c.port, nil, nonce, c.difficulty))
 		})

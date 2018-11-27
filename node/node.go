@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"net"
 	"strings"
 
 	pb "github.com/mathetake/doogle/grpc"
@@ -51,6 +50,10 @@ type nodeInfo struct {
 }
 
 func (n *Node) isValidSender(ctx context.Context, rawAddr []byte, pk, nonce []byte, difficulty int) bool {
+	if len(rawAddr) < addressLength {
+		return false
+	}
+
 	var da doogleAddress
 	copy(da[:], rawAddr[:addressLength])
 
@@ -72,48 +75,43 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr []byte, pk, nonce []by
 	return false
 }
 
-func (n *Node) StoreItem(context.Context, *pb.StoreItemRequest) (*pb.Empty, error) {
-	return nil, nil
-}
-func (n *Node) FindIndex(context.Context, *pb.FindIndexRequest) (*pb.FindIndexReply, error) {
-	return nil, nil
-}
-
-func (n *Node) FindNode(context.Context, *pb.FindNodeRequest) (*pb.FindeNodeReply, error) {
-	return nil, nil
-}
-
-func (n *Node) PingTo(context.Context, *pb.NodeInfo) (*pb.Empty, error) {
-	return nil, nil
-}
-
-func (n *Node) GetIndex(context.Context, *pb.StringMessage) (*pb.GetIndexReply, error) {
-	return nil, nil
-}
-
-func (n *Node) PostUrl(context.Context, *pb.StringMessage) (*pb.Empty, error) {
-	return nil, nil
-}
-
 func (n *Node) updateRoutingTable(info *nodeInfo) {
 	// update routingTable using given nodeInfo
 }
 
+func (n *Node) StoreItem(ctx context.Context, in *pb.StoreItemRequest) (*pb.Empty, error) {
+	return nil, nil
+}
+func (n *Node) FindIndex(ctx context.Context, in *pb.FindIndexRequest) (*pb.FindIndexReply, error) {
+	return nil, nil
+}
+
+func (n *Node) FindNode(ctx context.Context, in *pb.FindNodeRequest) (*pb.FindeNodeReply, error) {
+	return nil, nil
+}
+
+func (n *Node) PingTo(ctx context.Context, in *pb.NodeInfo) (*pb.Empty, error) {
+	return nil, nil
+}
+
+func (n *Node) GetIndex(ctx context.Context, in *pb.StringMessage) (*pb.GetIndexReply, error) {
+	return nil, nil
+}
+
+func (n *Node) PostUrl(ctx context.Context, in *pb.StringMessage) (*pb.Empty, error) {
+	return nil, nil
+}
+
 func (n *Node) Ping(ctx context.Context, in *pb.NodeCertificate) (*pb.StringMessage, error) {
 	// TODO: logging the result of validation
-	go n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty))
+	n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty))
 	return &pb.StringMessage{Message: "Pong"}, nil
 }
 
-func NewNode(difficulty int, networkAddress net.Addr) (*Node, error) {
+func NewNode(difficulty int, host, port string) (*Node, error) {
 	pk, sk, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate encryption keys")
-	}
-
-	nAdds := strings.Split(networkAddress.String(), ":")
-	if len(nAdds) != 2 {
-		return nil, errors.Errorf("invalid network address")
 	}
 
 	// set node parameters
@@ -124,7 +122,7 @@ func NewNode(difficulty int, networkAddress net.Addr) (*Node, error) {
 	}
 
 	// solve network puzzle
-	node.dAddr, node.nonce, err = newAddress(nAdds[0], nAdds[1], node.publicKey, node.difficulty)
+	node.dAddr, node.nonce, err = newNodeAddress(host, port, node.publicKey, node.difficulty)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate address")
 	}

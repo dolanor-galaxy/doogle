@@ -18,7 +18,7 @@ type doogleAddress [addressLength]byte
 
 type doogleAddressStr string
 
-func newAddress(host, port string, pk []byte, difficulty int) (doogleAddress, []byte, error) {
+func newNodeAddress(host, port string, pk []byte, difficulty int) (doogleAddress, []byte, error) {
 	var bStr = host + port
 	var ret = sha1.Sum(append([]byte(bStr), pk...))
 

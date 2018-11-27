@@ -33,6 +33,11 @@ protoc -I grpc/ grpc/doogle.proto --go_out=plugins=grpc:grpc
 
 see my survey: [Towards decentralized information retrieval: research papers](https://github.com/mathetake/notes/issues/1)
 
+
+Also there are two articles in __Japanese__:
+- [Distributed Hash Table and p2p Search Engine](https://scrapbox.io/layerx/Distributed_Hash_Table_and_p2p_Search_Engine)
+- [Peer-to-Peer Information Retrieval: An Overview](https://scrapbox.io/layerx/%5BWIP%5DPeer-to-Peer_Information_Retrieval:_An_Overview)
+
 ## LICENSE
 
 MIT
