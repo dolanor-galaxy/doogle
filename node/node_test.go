@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,13 @@ import (
 	"google.golang.org/grpc/peer"
 	"gotest.tools/assert"
 )
+
+var zeroAddress = doogleAddress{
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+}
+
+var zerInfo = &nodeInfo{zeroAddress, "", "", 0}
 
 const (
 	localhost = "localhost"
@@ -25,7 +33,7 @@ const (
 	port6     = ":3836"
 )
 
-var testServerParams = []struct {
+var testServers = []*struct {
 	port       string
 	difficulty int
 	node       *Node
@@ -38,17 +46,15 @@ var testServerParams = []struct {
 	{port: port6, difficulty: 1},
 }
 
-var testServers = make([]*Node, 0, 100)
-
 func TestMain(m *testing.M) {
-	for _, ts := range testServerParams {
-		runServer(ts.port, ts.difficulty)
+	for _, ts := range testServers {
+		ts.node = runServer(ts.port, ts.difficulty)
 	}
 	os.Exit(m.Run())
 }
 
 // set up doogle server on specified port
-func runServer(port string, difficulty int) {
+func runServer(port string, difficulty int) *Node {
 	node, err := NewNode(difficulty, localhost, port)
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
@@ -66,11 +72,11 @@ func runServer(port string, difficulty int) {
 		}
 	}()
 	time.Sleep(100 * time.Millisecond)
-	testServers = append(testServers, node)
+	return node
 }
 
 func TestPing(t *testing.T) {
-	for i, cc := range testServerParams {
+	for i, cc := range testServers {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			conn, err := grpc.Dial(localhost+c.port, grpc.WithInsecure())
@@ -172,4 +178,90 @@ func TestIsValidSender(t *testing.T) {
 	}
 }
 
-func TestUpdateRoutingTable(t *testing.T) {}
+func resetRoutingTable() {
+	for i := range testServers {
+		// reset routing table on testServers[0]
+		rt := map[int]*routingBucket{}
+		for i := 0; i < 160; i++ {
+			b := make([]*nodeInfo, 0, bucketSize)
+			rt[i] = &routingBucket{bucket: b, mux: sync.Mutex{}}
+		}
+		testServers[i].node.routingTable = rt
+	}
+}
+
+func TestUpdateRoutingTable(t *testing.T) {
+	// reset routing table
+	resetRoutingTable()
+
+	// update target nodeInfo
+	target := &nodeInfo{
+		dAddr: testServers[1].node.dAddr,
+		host:  localhost,
+		port:  testServers[1].port,
+	}
+	msb := getMostSignificantBit(target.dAddr.xor(testServers[0].node.dAddr))
+
+	for i, cc := range []struct {
+		before, after []*nodeInfo
+	}{
+		{
+			before: []*nodeInfo{},
+			after:  []*nodeInfo{target},
+		},
+		{
+			before: []*nodeInfo{zerInfo},
+			after:  []*nodeInfo{zerInfo, target},
+		},
+		{
+			before: []*nodeInfo{target, zerInfo},
+			after:  []*nodeInfo{zerInfo, target},
+		},
+		{
+			before: []*nodeInfo{zerInfo, zerInfo},
+			after:  []*nodeInfo{zerInfo, zerInfo, target},
+		},
+		{
+			before: []*nodeInfo{
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, target, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+			},
+			after: []*nodeInfo{
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, target,
+			},
+		},
+		{
+			before: []*nodeInfo{
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+			},
+			after: []*nodeInfo{
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zerInfo, zerInfo, zerInfo, zerInfo, target,
+			},
+		},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+
+			testServers[0].node.routingTable[msb].bucket = c.before
+			testServers[0].node.updateRoutingTable(target)
+			assert.Equal(t, len(c.after), len(testServers[0].node.routingTable[msb].bucket))
+
+			for i := range c.after {
+				assert.Equal(t, c.after[i].port, testServers[0].node.routingTable[msb].bucket[i].port)
+				assert.Equal(t, c.after[i].host, testServers[0].node.routingTable[msb].bucket[i].host)
+				assert.Equal(t, c.after[i].dAddr, testServers[0].node.routingTable[msb].bucket[i].dAddr)
+			}
+		})
+	}
+}

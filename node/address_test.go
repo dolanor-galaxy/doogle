@@ -108,3 +108,29 @@ func TestLessThan(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMostSignificantBit(t *testing.T) {
+	for i, cc := range []struct {
+		input    doogleAddress
+		expected int
+	}{
+		{
+			doogleAddress{10, 0, 0, 0, 0, 10, 0, 0, 0, 0, 10, 0, 0, 0, 0, 10, 0, 0, 0, 0},
+			155, // 10 = 0b00001010
+		},
+		{
+			doogleAddress{0, 255, 0, 0, 0, 10, 0, 0, 0, 0, 10, 0, 0, 0, 0, 10, 0, 0, 0, 0},
+			151, // 255 = 0b11111111
+		},
+		{
+			doogleAddress{255, 255, 0, 0, 0, 10, 0, 0, 0, 0, 10, 0, 0, 0, 0, 10, 0, 0, 0, 0},
+			159, // 255 = 0b11111111
+		},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			actual := getMostSignificantBit(c.input)
+			assert.Equal(t, c.expected, actual)
+		})
+	}
+}

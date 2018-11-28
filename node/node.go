@@ -124,24 +124,7 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, dif
 
 // update routingTable using a given nodeInfo
 func (n *Node) updateRoutingTable(info *nodeInfo) {
-	dist := n.dAddr.xor(info.dAddr)
-
-	var idx = 159
-	for i := 0; i < addressLength; i++ {
-		var b = dist[i]
-		if b == 0 {
-			continue
-			idx -= 8
-		}
-
-		// extract most significant bit
-		var msb = 0
-		for b != 0 {
-			msb++
-			b = b >> 1
-		}
-		idx -= msb
-	}
+	idx := getMostSignificantBit(n.dAddr.xor(info.dAddr))
 
 	rb, ok := n.routingTable[idx]
 	if !ok || rb == nil {

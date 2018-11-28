@@ -92,3 +92,24 @@ func (da doogleAddress) lessThanEqual(a doogleAddress) bool {
 	}
 	return true
 }
+
+func getMostSignificantBit(input doogleAddress) int {
+	var ret = 159
+	for i := 0; i < addressLength; i++ {
+		var b = input[i]
+
+		if b == 0 {
+			ret -= 8
+			continue
+		}
+
+		var s = 8
+		for b != 0 {
+			s--
+			b = b >> 1
+		}
+		ret -= s
+		break
+	}
+	return ret
+}
