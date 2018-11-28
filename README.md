@@ -6,24 +6,83 @@ _Web search of the people, by the people, for the people with Go._
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 
-doogle is a PoC implementation of __decentralized search engine__ based on gRPC written in Go.
-
-For PoC purposes only. __NOT__ to use in production environment.
+doogle is a Proof of Concept of __decentralized search engine__ based on gRPC written in Go.
 
 ## algorithms behind doogle
 
-### Distributed Hash Table based on S/Kademlia
+### 1. Distributed Hash Table based on S/Kademlia
 Baumgart, Ingmar, and Sebastian Mies. "S/kademlia: A practicable approach towards secure key-based routing." Parallel and Distributed Systems, 2007 International Conference on. IEEE, 2007.
 
-### local estimation of PageRank with `WorldNode`
+### 2. local estimation of PageRank with `WorldNode`
 Parreira, Josiane Xavier, et al. "Efficient and decentralized pagerank approximation in a peer-to-peer web search network." Proceedings of the 32nd international conference on Very large data bases. VLDB Endowment, 2006.
 
 
 ## development
 
-- install go, grpc, protc, go-grpc, etc.
 
-- if you modify doogle.proto, then run:
+### build and test
+
+```bash
+❯ go get -u -d github.com/mathetake/doogle
+❯ cd $GOPATH/src/github.com/mathetake/doogle
+❯ go build .
+❯ go test -v -race ./...
+```
+
+
+### start node
+
+```
+❯ ./doogle --help
+Usage of ./doogle:
+  -d int
+        difficulty for cryptographic puzzle
+  -p string
+        port for node
+
+❯ ./doogle -p :12312 -d 1
+2018/11/28 16:27:10 node created: doogleAddress=b22c4df4064e9be97a5f592e8e4e4525a3cabe72
+2018/11/28 16:27:10 node listen on port: :12312
+```
+
+You can connect to the node with, for example, [grpcc](https://github.com/njpatel/grpcc):
+
+```
+❯ grpcc --proto grpc/doogle.proto --address localhost:12312 --insecure
+
+Connecting to doogle.Doogle on localhost:12312. Available globals:
+
+  client - the client connection to Doogle
+    storeItem (StoreItemRequest, callback) returns Empty
+    findIndex (FindIndexRequest, callback) returns FindIndexReply
+    findNode (FindNodeRequest, callback) returns FindeNodeReply
+    pingWithCertificate (NodeCertificate, callback) returns StringMessage
+    ping (StringMessage, callback) returns StringMessage
+    pingTo (NodeInfo, callback) returns StringMessage
+    getIndex (StringMessage, callback) returns GetIndexReply
+    postUrl (StringMessage, callback) returns StringMessage
+
+  printReply - function to easily print a unary call reply (alias: pr)
+  streamReply - function to easily print stream call replies (alias: sr)
+  createMetadata - convert JS objects into grpc metadata instances (alias: cm)
+  printMetadata - function to easily print a unary call's metadata (alias: pm)
+```
+
+and then call `Ping`:
+
+```
+Doogle@localhost:12312> client.ping({ message: 'ping' }, printReply)
+EventEmitter {}
+Doogle@localhost:12312>
+{
+  "message": "pong"
+}
+```
+
+
+### modify interface
+
+install protc,  then run:
 
 ```bash
 protoc -I grpc/ grpc/doogle.proto --go_out=plugins=grpc:grpc

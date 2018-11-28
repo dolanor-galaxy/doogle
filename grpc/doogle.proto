@@ -37,9 +37,10 @@ service Doogle {
     rpc FindNode(FindNodeRequest) returns(FindeNodeReply);
 
     // health check
-    rpc Ping (NodeCertificate) returns (StringMessage);
+    rpc PingWithCertificate (NodeCertificate) returns (StringMessage);
 
-    // the following endponts can be accessed from outside of the network.
+    // the following endpoints can be accessed from outside of the network.
+    rpc Ping (StringMessage) returns(StringMessage);
     rpc PingTo(NodeInfo) returns (StringMessage); // request to send PingRequest to given node
     rpc GetIndex(StringMessage) returns(GetIndexReply); // get index of given query
     rpc PostUrl(StringMessage) returns (StringMessage); // post url in order for it to be indexed

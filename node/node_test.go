@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/mathetake/doogle/grpc"
+	"github.com/mathetake/doogle/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 	"gotest.tools/assert"
@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 
 // set up doogle server on specified port
 func runServer(port string, difficulty int) *Node {
-	node, err := NewNode(difficulty, localhost, port)
+	node, err := NewNode(difficulty, localhost, port, nil, nil)
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
 	}
@@ -65,7 +65,7 @@ func runServer(port string, difficulty int) *Node {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterDoogleServer(s, node)
+	doogle.RegisterDoogleServer(s, node)
 	go func() {
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
@@ -79,7 +79,7 @@ func resetRoutingTable() {
 	for i := range testServers {
 		// reset routing table on testServers[0]
 		rt := map[int]*routingBucket{}
-		for i := 0; i < 160; i++ {
+		for i := 0; i < addressBits; i++ {
 			b := make([]*nodeInfo, 0, bucketSize)
 			rt[i] = &routingBucket{bucket: b, mux: sync.Mutex{}}
 		}
@@ -88,7 +88,7 @@ func resetRoutingTable() {
 }
 
 func TestPopAndAppend(t *testing.T) {
-	targetInfo := &nodeInfo{dAddr: testServers[0].node.dAddr}
+	targetInfo := &nodeInfo{dAddr: testServers[0].node.DAddr}
 
 	for i, cc := range []struct {
 		idx    int
@@ -138,7 +138,7 @@ func TestPopAndAppend(t *testing.T) {
 	}
 }
 
-func TestPing(t *testing.T) {
+func TestPingWithCertificate(t *testing.T) {
 	for i, cc := range testServers {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
@@ -147,12 +147,33 @@ func TestPing(t *testing.T) {
 				log.Fatalf("did not connect: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewDoogleClient(conn)
+			client := doogle.NewDoogleClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			r, err := client.Ping(ctx, &pb.NodeCertificate{})
+			r, err := client.PingWithCertificate(ctx, &doogle.NodeCertificate{})
 			assert.Equal(t, nil, err)
-			assert.Equal(t, "Pong", r.Message)
+			assert.Equal(t, "pong", r.Message)
+
+			// TODO: check if the table is updated
+		})
+	}
+}
+
+func TestPingWithoutCertificate(t *testing.T) {
+	for i, cc := range testServers {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			conn, err := grpc.Dial(localhost+c.port, grpc.WithInsecure())
+			if err != nil {
+				log.Fatalf("did not connect: %v", err)
+			}
+			defer conn.Close()
+			client := doogle.NewDoogleClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			r, err := client.Ping(ctx, &doogle.StringMessage{Message: ""})
+			assert.Equal(t, nil, err)
+			assert.Equal(t, "pong", r.Message)
 
 			// TODO: check if the table is updated
 		})
@@ -178,11 +199,11 @@ func TestPingTo(t *testing.T) {
 				log.Fatalf("did not connect: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewDoogleClient(conn)
+			client := doogle.NewDoogleClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			_, err = client.PingTo(ctx, &pb.NodeInfo{Host: localhost, Port: c.toPort[1:]})
+			_, err = client.PingTo(ctx, &doogle.NodeInfo{Host: localhost, Port: c.toPort[1:]})
 			actual := err == nil
 			assert.Equal(t, c.isErrorNil, actual)
 			if !actual {
@@ -224,6 +245,13 @@ func TestIsValidSender(t *testing.T) {
 			10,
 			false,
 		},
+		{
+			"ab:80",
+			[]byte{137, 247, 252, 74, 101, 232, 49, 193, 122, 237, 123, 84, 199, 94, 78, 176, 92, 104, 69, 253},
+			[]byte("pk"), []byte{172, 171, 254, 98, 171, 6, 169, 186, 105, 145},
+			1,
+			false,
+		},
 	} {
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			c := cc
@@ -231,7 +259,7 @@ func TestIsValidSender(t *testing.T) {
 			ctx := context.Background()
 			ctx = peer.NewContext(ctx, &p)
 
-			node, err := NewNode(0, "bar", "foo")
+			node, err := NewNode(2, "bar", "foo", nil, nil)
 			if err != nil {
 				t.Fatalf("failed to create new node: %v", err)
 			}
@@ -247,11 +275,11 @@ func TestUpdateRoutingTable(t *testing.T) {
 
 	// update target nodeInfo
 	target := &nodeInfo{
-		dAddr: testServers[1].node.dAddr,
+		dAddr: testServers[1].node.DAddr,
 		host:  localhost,
 		port:  testServers[1].port,
 	}
-	msb := getMostSignificantBit(target.dAddr.xor(testServers[0].node.dAddr))
+	msb := getMostSignificantBit(target.dAddr.xor(testServers[0].node.DAddr))
 
 	for i, cc := range []struct {
 		before, after []*nodeInfo

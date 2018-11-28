@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/mathetake/doogle/grpc"
+	"github.com/mathetake/doogle/crawler"
+
+	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ed25519"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -37,8 +40,7 @@ type item struct {
 }
 
 type Node struct {
-	// should be 160 bits
-	dAddr doogleAddress
+	DAddr doogleAddress
 
 	// table for routing
 	// keys correspond to `distance bits`
@@ -58,6 +60,12 @@ type Node struct {
 	secretKey  []byte
 	nonce      []byte
 	difficulty int
+
+	// logger
+	logger *logrus.Logger
+
+	// crawler
+	crawler crawler.Crawler
 }
 
 // nodeInfo contains the information for connecting nodes
@@ -95,12 +103,14 @@ type dhtValue struct {
 }
 
 func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, difficulty int) bool {
-	if len(rawAddr) < addressLength {
+
+	// refuse the one with the given difficulty less than its difficulty
+	if len(rawAddr) < addressLength || difficulty < n.difficulty {
 		return false
 	}
 
 	var da doogleAddress
-	copy(da[:], rawAddr[:addressLength])
+	copy(da[:], rawAddr[:])
 
 	if pr, ok := peer.FromContext(ctx); ok {
 		addr := strings.Split(pr.Addr.String(), ":")
@@ -124,7 +134,7 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, dif
 
 // update routingTable using a given nodeInfo
 func (n *Node) updateRoutingTable(info *nodeInfo) {
-	idx := getMostSignificantBit(n.dAddr.xor(info.dAddr))
+	idx := getMostSignificantBit(n.DAddr.xor(info.dAddr))
 
 	rb, ok := n.routingTable[idx]
 	if !ok || rb == nil {
@@ -159,41 +169,48 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 	}
 }
 
-func (n *Node) StoreItem(ctx context.Context, in *pb.StoreItemRequest) (*pb.Empty, error) {
+func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doogle.Empty, error) {
 	return nil, nil
 }
-func (n *Node) FindIndex(ctx context.Context, in *pb.FindIndexRequest) (*pb.FindIndexReply, error) {
-	return nil, nil
-}
-
-func (n *Node) FindNode(ctx context.Context, in *pb.FindNodeRequest) (*pb.FindeNodeReply, error) {
+func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doogle.FindIndexReply, error) {
 	return nil, nil
 }
 
-func (n *Node) GetIndex(ctx context.Context, in *pb.StringMessage) (*pb.GetIndexReply, error) {
+func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.FindeNodeReply, error) {
 	return nil, nil
 }
 
-func (n *Node) PostUrl(ctx context.Context, in *pb.StringMessage) (*pb.StringMessage, error) {
+func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.GetIndexReply, error) {
 	return nil, nil
 }
 
-func (n *Node) Ping(ctx context.Context, in *pb.NodeCertificate) (*pb.StringMessage, error) {
+func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.StringMessage, error) {
+	// 1. call crawler
+	// 2. get parsed result
+	// 3. merge into DHT
+	return nil, nil
+}
+
+func (n *Node) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate) (*doogle.StringMessage, error) {
 	// TODO: logging the result of validation
 	n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty))
-	return &pb.StringMessage{Message: "Pong"}, nil
+	return &doogle.StringMessage{Message: "pong"}, nil
 }
 
-func (n *Node) PingTo(ctx context.Context, in *pb.NodeInfo) (*pb.StringMessage, error) {
+func (n *Node) Ping(ctx context.Context, in *doogle.StringMessage) (*doogle.StringMessage, error) {
+	return &doogle.StringMessage{Message: "pong"}, nil
+}
+
+func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringMessage, error) {
 	conn, err := grpc.Dial(in.Host+":"+in.Port, grpc.WithInsecure())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "did not connect: %v", err)
 	}
 	defer conn.Close()
 
-	c := pb.NewDoogleClient(conn)
-	r, err := c.Ping(ctx, &pb.NodeCertificate{
-		DoogleAddress: n.dAddr[:addressLength],
+	c := doogle.NewDoogleClient(conn)
+	r, err := c.PingWithCertificate(ctx, &doogle.NodeCertificate{
+		DoogleAddress: n.DAddr[:],
 		PublicKey:     n.publicKey,
 		Nonce:         n.nonce,
 		Difficulty:    int32(n.difficulty),
@@ -201,11 +218,10 @@ func (n *Node) PingTo(ctx context.Context, in *pb.NodeInfo) (*pb.StringMessage, 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "c.Ping failed: %v", err)
 	}
-
-	return &pb.StringMessage{Message: r.Message}, nil
+	return &doogle.StringMessage{Message: r.Message}, nil
 }
 
-func NewNode(difficulty int, host, port string) (*Node, error) {
+func NewNode(difficulty int, host, port string, logger *logrus.Logger, cr crawler.Crawler) (*Node, error) {
 	pk, sk, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate encryption keys")
@@ -213,7 +229,7 @@ func NewNode(difficulty int, host, port string) (*Node, error) {
 
 	// initialize routing table
 	rt := map[int]*routingBucket{}
-	for i := 0; i < 160; i++ {
+	for i := 0; i < addressBits; i++ {
 		b := make([]*nodeInfo, 0, bucketSize)
 		rt[i] = &routingBucket{bucket: b, mux: sync.Mutex{}}
 	}
@@ -224,17 +240,18 @@ func NewNode(difficulty int, host, port string) (*Node, error) {
 		secretKey:    sk,
 		difficulty:   difficulty,
 		routingTable: rt,
+		logger:       logger,
+		crawler:      cr,
 	}
 
 	// solve network puzzle
-	node.dAddr, node.nonce, err = newNodeAddress(host, port, node.publicKey, node.difficulty)
+	node.DAddr, node.nonce, err = newNodeAddress(host, port, node.publicKey, node.difficulty)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate address")
 	}
 
-	// TODO: start scheduled crawler
 	// TODO: start PageRank computing scheduler
 	return &node, nil
 }
 
-var _ pb.DoogleServer = &Node{}
+var _ doogle.DoogleServer = &Node{}

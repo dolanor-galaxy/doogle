@@ -9,6 +9,7 @@ import (
 
 const (
 	addressLength = 20
+	addressBits   = 160
 	nonceLength   = 10
 	maxIteration  = 10e8
 )
@@ -32,7 +33,7 @@ func newNodeAddress(host, port string, pk []byte, difficulty int) (doogleAddress
 			continue
 		}
 
-		sol := sha1.Sum(append(ret[:addressLength], nonce...))
+		sol := sha1.Sum(append(ret[:], nonce...))
 		var count int
 		for j := 0; j < difficulty; j++ {
 			if sol[j] != 0 {
@@ -61,7 +62,7 @@ func verifyAddress(da doogleAddress, host, port string, pk, nonce []byte, diffic
 		return false
 	}
 
-	sol := sha1.Sum(append(actual[:addressLength], nonce...))
+	sol := sha1.Sum(append(actual[:], nonce...))
 	for i := 0; i < int(difficulty); i++ {
 		if sol[i] != 0 {
 			return false
@@ -94,7 +95,7 @@ func (da doogleAddress) lessThanEqual(a doogleAddress) bool {
 }
 
 func getMostSignificantBit(input doogleAddress) int {
-	var ret = 159
+	var ret = addressBits - 1
 	for i := 0; i < addressLength; i++ {
 		var b = input[i]
 

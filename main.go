@@ -1,56 +1,62 @@
 package main
 
 import (
-	"context"
-	"log"
+	"encoding/hex"
+	"flag"
 	"net"
+	"strings"
 
-	"time"
+	"github.com/mathetake/doogle/crawler"
 
-	pb "github.com/mathetake/doogle/grpc"
+	"github.com/mathetake/doogle/grpc"
 	"github.com/mathetake/doogle/node"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-const (
-	port    = ":50051"
-	address = "localhost:50051"
+var (
+	// parameters
+	port       string
+	difficulty int
 )
 
 func main() {
-	go func() { runServer() }()
-	runClient()
-}
+	// initialize logger
+	logger := logrus.New()
 
-// for testing purpose
-func runClient() {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	c := pb.NewDoogleClient(conn)
+	// parse params
+	flag.StringVar(&port, "p", "", "port for node")
+	flag.IntVar(&difficulty, "d", 0, "difficulty for cryptographic puzzle")
+	flag.Parse()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	r, err := c.Ping(ctx, &pb.NodeCertificate{})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-	log.Printf("Greeting: %s", r.Message)
-}
-
-func runServer() {
+	// listen port
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
-	pb.RegisterDoogleServer(s, &node.Node{})
-	// Register reflection service on gRPC server.
+
+	// create crawler
+	cr, err := crawler.NewCrawler()
+	if err != nil {
+		logger.Fatalf("failed to initialize crawler: %v", err)
+	}
+
+	// create new node
+	host := strings.Split(lis.Addr().String(), ":")[0]
+	srv, err := node.NewNode(difficulty, host, port, logger, cr)
+	if err != nil {
+		logger.Fatalf("failed to create node: %v", err)
+	}
+
+	logger.Infof("node created: doogleAddress=%v\n", hex.EncodeToString(srv.DAddr[:]))
+
+	// register node
+	s := grpc.NewServer(grpc.UnaryInterceptor(doogle.UnaryServerInterceptor(logger)))
+	doogle.RegisterDoogleServer(s, srv)
 	reflection.Register(s)
+	logger.Infof("node listen on port: %s \n", port)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Fatalf("failed to serve: %v", err)
 	}
 }

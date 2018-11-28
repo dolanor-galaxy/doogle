@@ -22,7 +22,8 @@ func TestNewAddress(t *testing.T) {
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			na, nonce, err := newNodeAddress(c.host, c.port, nil, c.difficulty)
 			assert.Equal(t, nil, err)
-			assert.Equal(t, true, verifyAddress(na, c.host, c.port, nil, nonce, c.difficulty))
+			actual := verifyAddress(na, c.host, c.port, nil, nonce, c.difficulty)
+			assert.Equal(t, true, actual)
 		})
 	}
 }
@@ -82,7 +83,7 @@ func TestGetNonce(t *testing.T) {
 	}
 }
 
-func TestLessThan(t *testing.T) {
+func TestLessEqualThan(t *testing.T) {
 	cases := []struct {
 		da       doogleAddress
 		a        doogleAddress
@@ -98,8 +99,12 @@ func TestLessThan(t *testing.T) {
 			doogleAddress{0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
 			false,
 		},
+		{
+			doogleAddress{0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0},
+			doogleAddress{0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
+			true,
+		},
 	}
-
 	for i, cc := range cases {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
