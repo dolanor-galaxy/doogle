@@ -2,7 +2,10 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	pb "github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
@@ -15,13 +18,16 @@ import (
 
 // constant network parameters
 const (
-	alpha       = 3
-	bucketSuize = 20
+	alpha      = 3
+	bucketSize = 20
 )
 
 type item struct {
-	url   string
 	dAddr doogleAddress
+
+	url         string
+	title       string
+	description string
 
 	// outgoing hyperlinks
 	edges []doogleAddress
@@ -36,13 +42,16 @@ type Node struct {
 
 	// table for routing
 	// keys correspond to `distance bits`
-	routingTable map[int][]*nodeInfo
+	// type: map{int -> *routingBucket}
+	routingTable map[int]*routingBucket
 
 	// distributed hash table points to addresses of items
-	dht map[doogleAddressStr][]doogleAddressStr
+	// type: map{doogleAddressStr -> *dhtValue}
+	dht sync.Map
 
 	// map of address to item's pointer
-	items map[doogleAddressStr]*item
+	// type: map{doogleAddressStr -> *item}
+	items sync.Map
 
 	// for certification
 	publicKey  []byte
@@ -53,9 +62,36 @@ type Node struct {
 
 // nodeInfo contains the information for connecting nodes
 type nodeInfo struct {
-	dAddr doogleAddress
-	host  string
-	port  string
+	dAddr      doogleAddress
+	host       string
+	port       string
+	accessedAt int64
+}
+
+type routingBucket struct {
+	bucket []*nodeInfo
+	mux    sync.Mutex
+}
+
+// pop item on `idx` and then append `ni`
+func (rb *routingBucket) popAndAppend(idx int, ni *nodeInfo) {
+	prev := rb.bucket
+	l := len(prev)
+	rb.bucket = make([]*nodeInfo, l)
+	for i := 0; i < l; i++ {
+		if i == l-1 {
+			rb.bucket[i] = ni
+		} else if i < idx {
+			rb.bucket[i] = prev[i]
+		} else {
+			rb.bucket[i] = prev[i+1]
+		}
+	}
+}
+
+type dhtValue struct {
+	addresses []doogleAddressStr
+	mux       sync.Mutex
 }
 
 func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, difficulty int) bool {
@@ -72,11 +108,13 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, dif
 		// if NodeCertificate is valid, update routing table with nodeInfo
 		if verifyAddress(da, addr[0], addr[1], pk, nonce, difficulty) {
 			ni := nodeInfo{
-				dAddr: da,
-				host:  addr[0],
-				port:  addr[1],
+				dAddr:      da,
+				host:       addr[0],
+				port:       addr[1],
+				accessedAt: time.Now().UTC().Unix(),
 			}
-			// if it is verified, update routing table
+
+			// update the routing table
 			n.updateRoutingTable(&ni)
 			return true
 		}
@@ -105,15 +143,36 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 		idx -= msb
 	}
 
-	// TODO: check duplication
-	if len(n.routingTable[idx]) < bucketSuize {
-		n.routingTable[idx] = append(n.routingTable[idx], &nodeInfo{
-			host:  info.host,
-			port:  info.port,
-			dAddr: info.dAddr,
-		})
+	rb, ok := n.routingTable[idx]
+	if !ok || rb == nil {
+		panic(fmt.Sprintf("the routing table on %d not exist", idx))
+	}
+
+	// lock the bucket
+	rb.mux.Lock()
+	defer rb.mux.Unlock() // unlock the bucket
+	for i, n := range rb.bucket {
+		if n.dAddr == info.dAddr {
+			// Update accessedAt on target node.
+			n.accessedAt = time.Now().UTC().Unix()
+
+			// move the target to tail of the bucket
+			rb.popAndAppend(i, n)
+			return
+		}
+	}
+
+	ni := &nodeInfo{
+		host:       info.host,
+		port:       info.port,
+		dAddr:      info.dAddr,
+		accessedAt: time.Now().UTC().Unix(),
+	}
+
+	if len(rb.bucket) < bucketSize {
+		rb.bucket = append(rb.bucket, ni)
 	} else {
-		// TODO: pop
+		rb.popAndAppend(0, ni)
 	}
 }
 
@@ -169,11 +228,19 @@ func NewNode(difficulty int, host, port string) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to generate encryption keys")
 	}
 
+	// initialize routing table
+	rt := map[int]*routingBucket{}
+	for i := 0; i < 160; i++ {
+		b := make([]*nodeInfo, 0, bucketSize)
+		rt[i] = &routingBucket{bucket: b, mux: sync.Mutex{}}
+	}
+
 	// set node parameters
 	node := Node{
-		publicKey:  pk,
-		secretKey:  sk,
-		difficulty: difficulty,
+		publicKey:    pk,
+		secretKey:    sk,
+		difficulty:   difficulty,
+		routingTable: rt,
 	}
 
 	// solve network puzzle

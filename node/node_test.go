@@ -25,27 +25,35 @@ const (
 	port6     = ":3836"
 )
 
-var testServers = []struct {
-	port string
-	node *Node
+var testServerParams = []struct {
+	port       string
+	difficulty int
+	node       *Node
 }{
-	{port1, &Node{}},
-	{port2, &Node{}},
-	{port3, &Node{}},
-	{port4, &Node{}},
-	{port5, &Node{}},
-	{port6, &Node{}},
+	{port: port1, difficulty: 1},
+	{port: port2, difficulty: 1},
+	{port: port3, difficulty: 1},
+	{port: port4, difficulty: 1},
+	{port: port5, difficulty: 1},
+	{port: port6, difficulty: 1},
 }
 
+var testServers = make([]*Node, 0, 100)
+
 func TestMain(m *testing.M) {
-	for _, ts := range testServers {
-		runServer(ts.port, ts.node)
+	for _, ts := range testServerParams {
+		runServer(ts.port, ts.difficulty)
 	}
 	os.Exit(m.Run())
 }
 
 // set up doogle server on specified port
-func runServer(port string, node *Node) {
+func runServer(port string, difficulty int) {
+	node, err := NewNode(difficulty, localhost, port)
+	if err != nil {
+		log.Fatalf("failed to craete new node: %v", err)
+	}
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -58,18 +66,11 @@ func runServer(port string, node *Node) {
 		}
 	}()
 	time.Sleep(100 * time.Millisecond)
-}
-
-// reset all member variables with node
-func resetServers() {
-	for _, ts := range testServers {
-		ts.node = &Node{}
-	}
+	testServers = append(testServers, node)
 }
 
 func TestPing(t *testing.T) {
-	resetServers()
-	for i, cc := range testServers {
+	for i, cc := range testServerParams {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			conn, err := grpc.Dial(localhost+c.port, grpc.WithInsecure())
@@ -91,7 +92,6 @@ func TestPing(t *testing.T) {
 }
 
 func TestPingTo(t *testing.T) {
-	resetServers()
 	for i, cc := range []struct {
 		fromPort   string
 		toPort     string
@@ -162,11 +162,13 @@ func TestIsValidSender(t *testing.T) {
 			ctx := context.Background()
 			ctx = peer.NewContext(ctx, &p)
 
-			node := Node{}
+			node, err := NewNode(0, "bar", "foo")
+			if err != nil {
+				t.Fatalf("failed to create new node: %v", err)
+			}
 			actual := node.isValidSender(ctx, c.rawAddr, c.pk, c.nonce, c.difficulty)
 			assert.Equal(t, c.exp, actual)
 		})
-
 	}
 }
 
