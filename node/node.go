@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -71,8 +70,7 @@ type Node struct {
 // nodeInfo contains the information for connecting nodes
 type nodeInfo struct {
 	dAddr      doogleAddress
-	host       string
-	port       string
+	nAddr      string
 	accessedAt int64
 }
 
@@ -113,14 +111,12 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, dif
 	copy(da[:], rawAddr[:])
 
 	if pr, ok := peer.FromContext(ctx); ok {
-		addr := strings.Split(pr.Addr.String(), ":")
-
+		nAdd := pr.Addr.String()
 		// if NodeCertificate is valid, update routing table with nodeInfo
-		if verifyAddress(da, addr[0], addr[1], pk, nonce, difficulty) {
+		if verifyAddress(da, nAdd, pk, nonce, difficulty) {
 			ni := nodeInfo{
 				dAddr:      da,
-				host:       addr[0],
-				port:       addr[1],
+				nAddr:      nAdd,
 				accessedAt: time.Now().UTC().Unix(),
 			}
 
@@ -156,8 +152,7 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 	}
 
 	ni := &nodeInfo{
-		host:       info.host,
-		port:       info.port,
+		nAddr:      info.nAddr,
 		dAddr:      info.dAddr,
 		accessedAt: time.Now().UTC().Unix(),
 	}
@@ -202,7 +197,7 @@ func (n *Node) Ping(ctx context.Context, in *doogle.StringMessage) (*doogle.Stri
 }
 
 func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringMessage, error) {
-	conn, err := grpc.Dial(in.Host+":"+in.Port, grpc.WithInsecure())
+	conn, err := grpc.Dial(in.NetworkAddress, grpc.WithInsecure())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "did not connect: %v", err)
 	}
@@ -221,7 +216,7 @@ func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringM
 	return &doogle.StringMessage{Message: r.Message}, nil
 }
 
-func NewNode(difficulty int, host, port string, logger *logrus.Logger, cr crawler.Crawler) (*Node, error) {
+func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Crawler) (*Node, error) {
 	pk, sk, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate encryption keys")
@@ -245,7 +240,7 @@ func NewNode(difficulty int, host, port string, logger *logrus.Logger, cr crawle
 	}
 
 	// solve network puzzle
-	node.DAddr, node.nonce, err = newNodeAddress(host, port, node.publicKey, node.difficulty)
+	node.DAddr, node.nonce, err = newNodeAddress(nAddr, node.publicKey, node.difficulty)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate address")
 	}

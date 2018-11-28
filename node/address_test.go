@@ -13,16 +13,16 @@ func TestNewAddress(t *testing.T) {
 		port       string
 		difficulty int
 	}{
-		{"host1", "port1", 1},
-		{"host2", "port2", 2},
+		{"host1", ":port1", 1},
+		{"host2", ":port2", 2},
 	}
 
 	for i, cc := range cases {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			na, nonce, err := newNodeAddress(c.host, c.port, nil, c.difficulty)
+			na, nonce, err := newNodeAddress(c.host+c.port, nil, c.difficulty)
 			assert.Equal(t, nil, err)
-			actual := verifyAddress(na, c.host, c.port, nil, nonce, c.difficulty)
+			actual := verifyAddress(na, c.host+c.port, nil, nonce, c.difficulty)
 			assert.Equal(t, true, actual)
 		})
 	}
@@ -70,7 +70,7 @@ func TestVerifyAddress(t *testing.T) {
 	for i, cc := range cases {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			actual := verifyAddress(c.da, c.host, c.port, c.pk, c.nonce, c.difficulty)
+			actual := verifyAddress(c.da, c.host+c.port, c.pk, c.nonce, c.difficulty)
 			assert.Equal(t, actual, c.expected)
 		})
 	}

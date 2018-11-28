@@ -19,9 +19,8 @@ type doogleAddress [addressLength]byte
 
 type doogleAddressStr string
 
-func newNodeAddress(host, port string, pk []byte, difficulty int) (doogleAddress, []byte, error) {
-	var bStr = host + port
-	var ret = sha1.Sum(append([]byte(bStr), pk...))
+func newNodeAddress(nAddr string, pk []byte, difficulty int) (doogleAddress, []byte, error) {
+	var ret = sha1.Sum(append([]byte(nAddr), pk...))
 
 	// solve cryptographic puzzle
 	var err error
@@ -56,8 +55,8 @@ func newNodeAddress(host, port string, pk []byte, difficulty int) (doogleAddress
 	return doogleAddress{}, nil, errors.Errorf("could not solve puzzle")
 }
 
-func verifyAddress(da doogleAddress, host, port string, pk, nonce []byte, difficulty int) bool {
-	actual := sha1.Sum(append([]byte(host+port), pk...))
+func verifyAddress(da doogleAddress, nAddress string, pk, nonce []byte, difficulty int) bool {
+	actual := sha1.Sum(append([]byte(nAddress), pk...))
 	if da != actual {
 		return false
 	}

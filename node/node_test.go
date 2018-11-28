@@ -21,7 +21,7 @@ var zeroAddress = doogleAddress{
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-var zerInfo = &nodeInfo{zeroAddress, "", "", 0}
+var zerInfo = &nodeInfo{zeroAddress, "", 0}
 
 const (
 	localhost = "localhost"
@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 
 // set up doogle server on specified port
 func runServer(port string, difficulty int) *Node {
-	node, err := NewNode(difficulty, localhost, port, nil, nil)
+	node, err := NewNode(difficulty, localhost+port, nil, nil)
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestPingTo(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			_, err = client.PingTo(ctx, &doogle.NodeInfo{Host: localhost, Port: c.toPort[1:]})
+			_, err = client.PingTo(ctx, &doogle.NodeInfo{NetworkAddress: localhost + c.toPort})
 			actual := err == nil
 			assert.Equal(t, c.isErrorNil, actual)
 			if !actual {
@@ -230,23 +230,23 @@ func TestIsValidSender(t *testing.T) {
 		exp        bool
 	}{
 		{"", nil, nil, nil, 10, false},
-		{"localhost:1234", []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, nil, nil, 10, false},
+		{"localhost1234", []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, nil, nil, 10, false},
 		{
-			"ab:80",
+			"ab80",
 			[]byte{137, 247, 252, 74, 101, 232, 49, 193, 122, 237, 123, 84, 199, 94, 78, 176, 92, 104, 69, 253},
 			[]byte("pk"), []byte{172, 171, 254, 98, 171, 6, 169, 186, 105, 145},
 			2,
 			true,
 		},
 		{
-			"ab:80",
+			"ab80",
 			[]byte{137, 247, 252, 74, 101, 232, 49, 193, 122, 237, 123, 84, 199, 94, 78, 176, 92, 104, 69, 253},
 			[]byte("pk"), []byte{172, 171, 254, 98, 171, 6, 169, 186, 105, 145},
 			10,
 			false,
 		},
 		{
-			"ab:80",
+			"ab80",
 			[]byte{137, 247, 252, 74, 101, 232, 49, 193, 122, 237, 123, 84, 199, 94, 78, 176, 92, 104, 69, 253},
 			[]byte("pk"), []byte{172, 171, 254, 98, 171, 6, 169, 186, 105, 145},
 			1,
@@ -259,7 +259,7 @@ func TestIsValidSender(t *testing.T) {
 			ctx := context.Background()
 			ctx = peer.NewContext(ctx, &p)
 
-			node, err := NewNode(2, "bar", "foo", nil, nil)
+			node, err := NewNode(2, "bar", nil, nil)
 			if err != nil {
 				t.Fatalf("failed to create new node: %v", err)
 			}
@@ -276,8 +276,7 @@ func TestUpdateRoutingTable(t *testing.T) {
 	// update target nodeInfo
 	target := &nodeInfo{
 		dAddr: testServers[1].node.DAddr,
-		host:  localhost,
-		port:  testServers[1].port,
+		nAddr: localhost + testServers[1].port,
 	}
 	msb := getMostSignificantBit(target.dAddr.xor(testServers[0].node.DAddr))
 
@@ -337,8 +336,7 @@ func TestUpdateRoutingTable(t *testing.T) {
 			assert.Equal(t, len(c.after), len(testServers[0].node.routingTable[msb].bucket))
 
 			for i := range c.after {
-				assert.Equal(t, c.after[i].port, testServers[0].node.routingTable[msb].bucket[i].port)
-				assert.Equal(t, c.after[i].host, testServers[0].node.routingTable[msb].bucket[i].host)
+				assert.Equal(t, c.after[i].nAddr, testServers[0].node.routingTable[msb].bucket[i].nAddr)
 				assert.Equal(t, c.after[i].dAddr, testServers[0].node.routingTable[msb].bucket[i].dAddr)
 			}
 		})

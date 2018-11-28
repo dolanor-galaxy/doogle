@@ -20,7 +20,7 @@ func UnaryServerInterceptor(logger *logrus.Logger) grpc.UnaryServerInterceptor {
 				"response_time": time.Since(begin),
 			}
 			if err != nil {
-				logger.WithFields(fields).Error("%v", err)
+				logger.WithFields(fields).Errorf("%v", err)
 			} else {
 				logger.WithFields(fields).Info()
 			}

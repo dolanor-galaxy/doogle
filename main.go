@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"net"
-	"strings"
 
 	"github.com/mathetake/doogle/crawler"
 
@@ -43,8 +42,7 @@ func main() {
 	}
 
 	// create new node
-	host := strings.Split(lis.Addr().String(), ":")[0]
-	srv, err := node.NewNode(difficulty, host, port, logger, cr)
+	srv, err := node.NewNode(difficulty, lis.Addr().String(), logger, cr)
 	if err != nil {
 		logger.Fatalf("failed to create node: %v", err)
 	}
