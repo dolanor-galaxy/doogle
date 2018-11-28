@@ -75,6 +75,69 @@ func runServer(port string, difficulty int) *Node {
 	return node
 }
 
+func resetRoutingTable() {
+	for i := range testServers {
+		// reset routing table on testServers[0]
+		rt := map[int]*routingBucket{}
+		for i := 0; i < 160; i++ {
+			b := make([]*nodeInfo, 0, bucketSize)
+			rt[i] = &routingBucket{bucket: b, mux: sync.Mutex{}}
+		}
+		testServers[i].node.routingTable = rt
+	}
+}
+
+func TestPopAndAppend(t *testing.T) {
+	targetInfo := &nodeInfo{dAddr: testServers[0].node.dAddr}
+
+	for i, cc := range []struct {
+		idx    int
+		before []*nodeInfo
+		after  []*nodeInfo
+	}{
+		{
+			idx:    0,
+			before: []*nodeInfo{zerInfo},
+			after:  []*nodeInfo{targetInfo},
+		},
+		{
+			idx:    0,
+			before: []*nodeInfo{zerInfo, zerInfo, zerInfo},
+			after:  []*nodeInfo{zerInfo, zerInfo, targetInfo},
+		},
+		{
+			idx:    0,
+			before: []*nodeInfo{targetInfo, zerInfo, zerInfo},
+			after:  []*nodeInfo{zerInfo, zerInfo, targetInfo},
+		},
+		{
+			idx:    1,
+			before: []*nodeInfo{targetInfo, zerInfo, zerInfo},
+			after:  []*nodeInfo{targetInfo, zerInfo, targetInfo},
+		},
+		{
+			idx:    2,
+			before: []*nodeInfo{targetInfo, zerInfo, zerInfo},
+			after:  []*nodeInfo{targetInfo, zerInfo, targetInfo},
+		},
+		{
+			idx:    2,
+			before: []*nodeInfo{targetInfo, zerInfo, zerInfo, targetInfo, zerInfo},
+			after:  []*nodeInfo{targetInfo, zerInfo, targetInfo, zerInfo, targetInfo},
+		},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			rb := routingBucket{mux: sync.Mutex{}, bucket: c.before}
+			rb.popAndAppend(c.idx, targetInfo)
+			assert.Equal(t, len(c.after), len(rb.bucket))
+			for i, exp := range c.after {
+				assert.Equal(t, *rb.bucket[i], *exp)
+			}
+		})
+	}
+}
+
 func TestPing(t *testing.T) {
 	for i, cc := range testServers {
 		c := cc
@@ -175,18 +238,6 @@ func TestIsValidSender(t *testing.T) {
 			actual := node.isValidSender(ctx, c.rawAddr, c.pk, c.nonce, c.difficulty)
 			assert.Equal(t, c.exp, actual)
 		})
-	}
-}
-
-func resetRoutingTable() {
-	for i := range testServers {
-		// reset routing table on testServers[0]
-		rt := map[int]*routingBucket{}
-		for i := 0; i < 160; i++ {
-			b := make([]*nodeInfo, 0, bucketSize)
-			rt[i] = &routingBucket{bucket: b, mux: sync.Mutex{}}
-		}
-		testServers[i].node.routingTable = rt
 	}
 }
 
