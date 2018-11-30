@@ -27,7 +27,7 @@ const (
 )
 
 type item struct {
-	dAddr doogleAddress
+	dAddrStr doogleAddressStr
 
 	url         string
 	title       string
@@ -101,8 +101,8 @@ func (rb *routingBucket) popAndAppend(idx int, ni *nodeInfo) {
 }
 
 type dhtValue struct {
-	addresses []doogleAddressStr
-	mux       sync.Mutex
+	itemAddresses []doogleAddressStr
+	mux           sync.Mutex
 }
 
 func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, difficulty int) bool {
@@ -170,6 +170,42 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 }
 
 func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doogle.Empty, error) {
+	if !n.isValidSender(
+		ctx, in.Certificate.DoogleAddress,
+		in.Certificate.PublicKey,
+		in.Certificate.Nonce,
+		int(in.Certificate.Difficulty)) {
+		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
+	}
+
+	es := make([]doogleAddress, len(in.Edges))
+	for i, e := range in.Edges {
+		es[i] = sha1.Sum(e)
+	}
+
+	it := &item{
+		url:         in.Url,
+		title:       in.Title,
+		edges:       es,
+		description: in.Description,
+	}
+
+	// store item on index
+	idx := doogleAddressStr(in.Index)
+	actual, _ := n.items.LoadOrStore(idx, &dhtValue{
+		itemAddresses: []doogleAddressStr{},
+		mux:           sync.Mutex{},
+	})
+
+	dhtV, ok := actual.(*dhtValue)
+	if !ok {
+		return nil, status.Error(codes.Internal, "failed to convert to *dhtValue")
+	}
+
+	dhtV.mux.Lock()
+	dhtV.itemAddresses = append(dhtV.itemAddresses, it.dAddrStr)
+	n.items.Store(it.dAddrStr, it)
+	defer dhtV.mux.Unlock()
 	return nil, nil
 }
 
@@ -210,7 +246,7 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 	// make StoreItem requests to store the url into DHT
 	for _, token := range tokens {
 		addr := sha1.Sum([]byte(token))[:]
-		di.Index = addr
+		di.Index = string(addr)
 
 		// find closes nodes to token's address
 		rep, err := n.FindNode(ctx, &doogle.FindNodeRequest{
