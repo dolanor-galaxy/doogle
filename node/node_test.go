@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -24,13 +25,7 @@ var zeroAddress = doogleAddress{
 var zeroInfo = &nodeInfo{zeroAddress, "", 0}
 
 const (
-	localhost = "[::1]"
-	port1     = ":3841"
-	port2     = ":3842"
-	port3     = ":3833"
-	port4     = ":3834"
-	port5     = ":3835"
-	port6     = ":3836"
+	localhost = "127.0.0.1"
 )
 
 var testServers = []*struct {
@@ -38,32 +33,34 @@ var testServers = []*struct {
 	difficulty int
 	node       *Node
 }{
-	{port: port1, difficulty: 1},
-	{port: port2, difficulty: 1},
-	{port: port3, difficulty: 1},
-	{port: port4, difficulty: 1},
-	{port: port5, difficulty: 1},
-	{port: port6, difficulty: 1},
+	{difficulty: 1},
+	{difficulty: 1},
+	{difficulty: 1},
+	{difficulty: 1},
+	{difficulty: 1},
+	{difficulty: 1},
 }
 
 func TestMain(m *testing.M) {
 	for _, ts := range testServers {
-		ts.node = runServer(ts.port, ts.difficulty)
+		ts.node, ts.port = runServer(ts.difficulty)
 	}
 	os.Exit(m.Run())
 }
 
 // set up doogle server on specified port
-func runServer(port string, difficulty int) *Node {
+func runServer(difficulty int) (*Node, string) {
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	port := ":" + strings.Split(lis.Addr().String(), ":")[1]
 	node, err := NewNode(difficulty, localhost+port, nil, nil)
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
 	}
 
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
 	s := grpc.NewServer()
 	doogle.RegisterDoogleServer(s, node)
 	go func() {
@@ -72,12 +69,11 @@ func runServer(port string, difficulty int) *Node {
 		}
 	}()
 	time.Sleep(100 * time.Millisecond)
-	return node
+	return node, port
 }
 
 func resetRoutingTable() {
 	for i := range testServers {
-		// reset routing table on testServers[0]
 		rt := map[int]*routingBucket{}
 		for i := 0; i < addressBits; i++ {
 			b := make([]*nodeInfo, 0, bucketSize)
@@ -152,6 +148,7 @@ func TestPopAndAppend(t *testing.T) {
 }
 
 func TestNode_PingWithCertificate(t *testing.T) {
+	resetRoutingTable()
 	defer resetRoutingTable()
 
 	for i, cc := range testServers {
@@ -207,10 +204,10 @@ func TestNode_PingTo(t *testing.T) {
 		toPort     string
 		isErrorNil bool
 	}{
-		{port1, port2, true},
-		{port1, port3, true},
-		{port3, port5, true},
-		{port3, ":1231", false},
+		{testServers[0].port, testServers[1].port, true},
+		{testServers[1].port, testServers[2].port, true},
+		{testServers[2].port, testServers[4].port, true},
+		{testServers[3].port, ":80", false},
 	} {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
@@ -459,6 +456,8 @@ func TestNode_StoreItem(t *testing.T) {
 }
 
 func TestNode_FindNode(t *testing.T) {
+	var mux = sync.Mutex{}
+
 	resetRoutingTable()
 	defer resetRoutingTable()
 
@@ -552,7 +551,6 @@ func TestNode_FindNode(t *testing.T) {
 			expected: []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
 		},
 	} {
-		var mux = sync.Mutex{}
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			var dAddr doogleAddress
