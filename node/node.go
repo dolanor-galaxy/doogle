@@ -19,10 +19,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// constant network parameters
 const (
 	alpha      = 3
 	bucketSize = 20
+
+	maxIterOnFindNode = 10e6
 )
 
 type item struct {
@@ -287,6 +288,49 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 }
 
 func (n *Node) findNode(addr doogleAddress) ([]*nodeInfo, error) {
+	prev := make(map[string]struct{}, alpha)
+	ret := make([]*nodeInfo, alpha)
+
+	for i := 0; i < maxIterOnFindNode; i++ {
+		res, err := n.FindNode(context.Background(), &doogle.FindNodeRequest{
+			Certificate:   n.certificate,
+			DoogleAddress: addr[:],
+		})
+
+		if err != nil {
+			n.logger.Errorf("failed to FindNode: %v", err)
+			continue
+		}
+
+		// count of duplication
+		var cnt int
+
+		for _, ni := range res.Infos {
+			var dAddr doogleAddress
+			copy(dAddr[:], ni.DoogleAddress)
+
+			ret[i] = &nodeInfo{
+				nAddr: ni.NetworkAddress,
+				dAddr: dAddr,
+			}
+
+			if _, ok := prev[ni.NetworkAddress]; ok {
+				cnt++
+			} else {
+				n.updateRoutingTable(ret[i])
+			}
+		}
+
+		if cnt == alpha {
+			break
+		} else {
+			prev = map[string]struct{}{}
+			for _, r := range ret {
+				prev[r.nAddr] = struct{}{}
+			}
+		}
+	}
+
 	return nil, nil
 }
 
