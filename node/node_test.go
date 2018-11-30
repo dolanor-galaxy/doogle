@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"log"
 	"net"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/mathetake/doogle/grpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/peer"
 	"gotest.tools/assert"
 )
 
@@ -24,7 +24,7 @@ var zeroAddress = doogleAddress{
 var zeroInfo = &nodeInfo{zeroAddress, "", 0}
 
 const (
-	localhost = "localhost"
+	localhost = "[::1]"
 	port1     = ":3841"
 	port2     = ":3842"
 	port3     = ":3833"
@@ -87,6 +87,15 @@ func resetRoutingTable() {
 	}
 }
 
+func TestVerifyAddressOnServers(t *testing.T) {
+	for i, cc := range testServers {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			assert.Equal(t, true, verifyAddress(c.node.DAddr, localhost+c.port, c.node.publicKey, c.node.nonce, c.node.difficulty))
+		})
+	}
+}
+
 func TestPopAndAppend(t *testing.T) {
 	targetInfo := &nodeInfo{dAddr: testServers[0].node.DAddr}
 
@@ -117,6 +126,11 @@ func TestPopAndAppend(t *testing.T) {
 		},
 		{
 			idx:    2,
+			before: []*nodeInfo{targetInfo, zeroInfo},
+			after:  []*nodeInfo{targetInfo, targetInfo},
+		},
+		{
+			idx:    2,
 			before: []*nodeInfo{targetInfo, zeroInfo, zeroInfo},
 			after:  []*nodeInfo{targetInfo, zeroInfo, targetInfo},
 		},
@@ -140,7 +154,12 @@ func TestPopAndAppend(t *testing.T) {
 
 func TestPingWithCertificate(t *testing.T) {
 	for i, cc := range testServers {
+		var tIDx = i + 1
+		if tIDx == len(testServers) {
+			tIDx = 0
+		}
 		c := cc
+		tc := testServers[tIDx]
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			conn, err := grpc.Dial(localhost+c.port, grpc.WithInsecure())
 			if err != nil {
@@ -150,11 +169,9 @@ func TestPingWithCertificate(t *testing.T) {
 			client := doogle.NewDoogleClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			r, err := client.PingWithCertificate(ctx, &doogle.NodeCertificate{})
+			r, err := client.PingWithCertificate(ctx, tc.node.certificate)
 			assert.Equal(t, nil, err)
 			assert.Equal(t, "pong", r.Message)
-
-			// TODO: check if the table is updated
 		})
 	}
 }
@@ -174,8 +191,6 @@ func TestPingWithoutCertificate(t *testing.T) {
 			r, err := client.Ping(ctx, &doogle.StringMessage{Message: ""})
 			assert.Equal(t, nil, err)
 			assert.Equal(t, "pong", r.Message)
-
-			// TODO: check if the table is updated
 		})
 	}
 
@@ -204,30 +219,19 @@ func TestPingTo(t *testing.T) {
 			defer cancel()
 
 			_, err = client.PingTo(ctx, &doogle.NodeInfo{NetworkAddress: localhost + c.toPort})
-			actual := err == nil
-			assert.Equal(t, c.isErrorNil, actual)
-			if !actual {
-				t.Logf("actual error message: %v", err)
-			}
+			assert.Equal(t, c.isErrorNil, err == nil)
 		})
 	}
 }
 
-type testAddr string
-
-func (ta testAddr) Network() string { return "" }
-func (ta testAddr) String() string  { return string(ta) }
-
-var _ net.Addr = testAddr("")
-
 func TestIsValidSender(t *testing.T) {
 	for i, cc := range []struct {
-		addr       string
-		rawAddr    []byte
-		pk         []byte
-		nonce      []byte
-		difficulty int
-		exp        bool
+		networkAddr string
+		rawAddr     []byte
+		pk          []byte
+		nonce       []byte
+		difficulty  int32
+		exp         bool
 	}{
 		{"", nil, nil, nil, 10, false},
 		{"localhost1234", []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, nil, nil, 10, false},
@@ -255,15 +259,17 @@ func TestIsValidSender(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			c := cc
-			p := peer.Peer{Addr: testAddr(c.addr), AuthInfo: nil}
-			ctx := context.Background()
-			ctx = peer.NewContext(ctx, &p)
-
 			node, err := NewNode(2, "bar", nil, nil)
 			if err != nil {
 				t.Fatalf("failed to create new node: %v", err)
 			}
-			actual := node.isValidSender(ctx, c.rawAddr, c.pk, c.nonce, c.difficulty)
+			actual := node.isValidSender(&doogle.NodeCertificate{
+				DoogleAddress:  c.rawAddr,
+				NetworkAddress: c.networkAddr,
+				PublicKey:      c.pk,
+				Nonce:          c.nonce,
+				Difficulty:     c.difficulty,
+			})
 			assert.Equal(t, c.exp, actual)
 		})
 	}
@@ -339,6 +345,106 @@ func TestUpdateRoutingTable(t *testing.T) {
 				assert.Equal(t, c.after[i].nAddr, testServers[0].node.routingTable[msb].bucket[i].nAddr)
 				assert.Equal(t, c.after[i].dAddr, testServers[0].node.routingTable[msb].bucket[i].dAddr)
 			}
+		})
+	}
+}
+
+func TestNodeStoreIndex(t *testing.T) {
+	target := testServers[1]
+	from := testServers[0]
+
+	for i, _req := range []*doogle.StoreItemRequest{
+		{
+			Certificate: from.node.certificate,
+			Index:       string([]byte{1}),
+			Url:         string([]byte{10}),
+			Title:       "title10",
+			Description: "description10",
+		},
+		{
+			Certificate: from.node.certificate,
+			Index:       string([]byte{1}),
+			Url:         string([]byte{11}),
+			Title:       "title11",
+			Description: "description11",
+		},
+		{
+			Certificate: from.node.certificate,
+			Index:       string([]byte{1}),
+			Url:         string([]byte{12}),
+			Title:       "title12",
+			Description: "description12",
+		},
+		{
+			Certificate: from.node.certificate,
+			Index:       string([]byte{2}),
+			Url:         string([]byte{20}),
+			Title:       "title20",
+			Description: "description1",
+		},
+		{
+			Certificate: from.node.certificate,
+			Index:       string([]byte{2}),
+			Url:         string([]byte{20}),
+			Title:       "title20",
+			Description: "description1",
+		},
+		{
+			Certificate: from.node.certificate,
+			Index:       string([]byte{3}),
+			Url:         string([]byte{30}),
+			Title:       "title30",
+			Description: "description1",
+		},
+	} {
+		req := _req
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			_, err := target.node.StoreItem(context.Background(), req)
+			assert.Equal(t, nil, err)
+
+			// calc item's address
+			h := sha1.Sum([]byte(req.Url))
+			itemAddr := doogleAddressStr(h[:])
+
+			// calc index's address
+			h = sha1.Sum([]byte(req.Index))
+			idxAddr := doogleAddressStr(h[:])
+
+			// get dhtValue
+			_dht, ok := target.node.dht.Load(idxAddr)
+			assert.Equal(t, true, ok)
+			_, ok = _dht.(*dhtValue)
+			assert.Equal(t, true, ok)
+
+			// check itemsMap
+			_it, ok := target.node.items.Load(itemAddr)
+			assert.Equal(t, true, ok)
+			it, ok := _it.(*item)
+			assert.Equal(t, true, ok)
+			assert.Equal(t, req.Title, it.title)
+		})
+	}
+
+	for i, cc := range []struct {
+		idx    string
+		expLen int
+	}{
+		{string([]byte{1}), 3},
+		{string([]byte{2}), 1},
+		{string([]byte{3}), 1},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			// calc index's address
+			h := sha1.Sum([]byte(c.idx))
+			idxAddr := doogleAddressStr(h[:])
+
+			_dhtV, ok := target.node.dht.Load(idxAddr)
+			assert.Equal(t, true, ok)
+
+			dhtV, ok := _dhtV.(*dhtValue)
+			assert.Equal(t, true, ok)
+			assert.Equal(t, c.expLen, len(dhtV.itemAddresses))
 		})
 	}
 }

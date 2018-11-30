@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/mathetake/doogle/crawler"
-
 	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ed25519"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
@@ -105,30 +103,27 @@ type dhtValue struct {
 	mux           sync.Mutex
 }
 
-func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, difficulty int) bool {
+func (n *Node) isValidSender(ct *doogle.NodeCertificate) bool {
 
 	// refuse the one with the given difficulty less than its difficulty
-	if len(rawAddr) < addressLength || difficulty < n.difficulty {
+	if len(ct.DoogleAddress) < addressLength || int(ct.Difficulty) < n.difficulty {
 		return false
 	}
 
 	var da doogleAddress
-	copy(da[:], rawAddr[:])
+	copy(da[:], ct.DoogleAddress[:])
 
-	if pr, ok := peer.FromContext(ctx); ok {
-		nAdd := pr.Addr.String()
-		// if NodeCertificate is valid, update routing table with nodeInfo
-		if verifyAddress(da, nAdd, pk, nonce, difficulty) {
-			ni := nodeInfo{
-				dAddr:      da,
-				nAddr:      nAdd,
-				accessedAt: time.Now().UTC().Unix(),
-			}
-
-			// update the routing table
-			n.updateRoutingTable(&ni)
-			return true
+	// if NodeCertificate is valid, update routing table with nodeInfo
+	if verifyAddress(da, ct.NetworkAddress, ct.PublicKey, ct.Nonce, int(ct.Difficulty)) {
+		ni := nodeInfo{
+			dAddr:      da,
+			nAddr:      ct.NetworkAddress,
+			accessedAt: time.Now().UTC().Unix(),
 		}
+
+		// update the routing table
+		n.updateRoutingTable(&ni)
+		return true
 	}
 	return false
 }
@@ -136,6 +131,10 @@ func (n *Node) isValidSender(ctx context.Context, rawAddr, pk, nonce []byte, dif
 // update routingTable using a given nodeInfo
 func (n *Node) updateRoutingTable(info *nodeInfo) {
 	idx := getMostSignificantBit(n.DAddr.xor(info.dAddr))
+	if idx < 0 {
+		errors.Errorf("collision occurred")
+		return
+	}
 
 	rb, ok := n.routingTable[idx]
 	if !ok || rb == nil {
@@ -170,11 +169,7 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 }
 
 func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doogle.Empty, error) {
-	if !n.isValidSender(
-		ctx, in.Certificate.DoogleAddress,
-		in.Certificate.PublicKey,
-		in.Certificate.Nonce,
-		int(in.Certificate.Difficulty)) {
+	if !n.isValidSender(in.Certificate) {
 		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
 	}
 
@@ -183,16 +178,24 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		es[i] = sha1.Sum(e)
 	}
 
+	// calc item's address
+	h := sha1.Sum([]byte(in.Url))
+	itemAddr := doogleAddressStr(h[:])
+
+	// calc index's address
+	h = sha1.Sum([]byte(in.Index))
+	idxAddr := doogleAddressStr(h[:])
+
 	it := &item{
 		url:         in.Url,
+		dAddrStr:    itemAddr,
 		title:       in.Title,
 		edges:       es,
 		description: in.Description,
 	}
 
 	// store item on index
-	idx := doogleAddressStr(in.Index)
-	actual, _ := n.items.LoadOrStore(idx, &dhtValue{
+	actual, _ := n.dht.LoadOrStore(idxAddr, &dhtValue{
 		itemAddresses: []doogleAddressStr{},
 		mux:           sync.Mutex{},
 	})
@@ -203,9 +206,25 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 	}
 
 	dhtV.mux.Lock()
-	dhtV.itemAddresses = append(dhtV.itemAddresses, it.dAddrStr)
-	n.items.Store(it.dAddrStr, it)
 	defer dhtV.mux.Unlock()
+
+	var included = false
+	for _, addr := range dhtV.itemAddresses {
+		if addr == it.dAddrStr {
+			included = true
+		}
+	}
+
+	if !included {
+		dhtV.itemAddresses = append(dhtV.itemAddresses, it.dAddrStr)
+	}
+
+	if _prev, loaded := n.items.LoadOrStore(it.dAddrStr, it); loaded {
+		prev := _prev.(*item)
+		it.localRank = prev.localRank
+		n.items.Store(it.dAddrStr, it)
+	}
+
 	return nil, nil
 }
 
@@ -231,7 +250,8 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 	// prepare StoreItemRequest
 	edges := make([][]byte, len(eURLs))
 	for i, u := range eURLs {
-		edges[i] = sha1.Sum([]byte(u))[:]
+		addr := sha1.Sum([]byte(u))
+		edges[i] = addr[:]
 	}
 
 	di := &doogle.StoreItemRequest{
@@ -240,45 +260,51 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 		Description: desc,
 		Edges:       edges,
 		Certificate: n.certificate,
-		Index:       nil,
 	}
 
 	// make StoreItem requests to store the url into DHT
 	for _, token := range tokens {
-		addr := sha1.Sum([]byte(token))[:]
-		di.Index = string(addr)
+		addr := sha1.Sum([]byte(token))
+		di.Index = string(addr[:])
 
 		// find closes nodes to token's address
-		rep, err := n.FindNode(ctx, &doogle.FindNodeRequest{
+		rep, err := n.FindNode(context.Background(), &doogle.FindNodeRequest{
 			Certificate:   n.certificate,
-			DoogleAddress: addr,
+			DoogleAddress: addr[:],
 		})
 
 		if err != nil {
-			n.logger.Errorf("failed to find node for %s : %v", hex.EncodeToString(addr), err)
+			n.logger.Errorf("failed to find node for %s : %v", hex.EncodeToString(addr[:]), err)
+			continue
 		}
 
 		// call StoreItem request on closest nodes
+		var wg = sync.WaitGroup{}
 		for _, ni := range rep.NodeInfos.Infos {
-			conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "did not connect: %v", err)
-			}
-
-			c := doogle.NewDoogleClient(conn)
-			_, err = c.StoreItem(ctx, di)
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to call StoreItem: %v", err)
-			}
-			conn.Close()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
+				defer conn.Close()
+				if err != nil {
+					n.logger.Errorf("did not connect: %v", err)
+					return
+				}
+				c := doogle.NewDoogleClient(conn)
+				_, err = c.StoreItem(context.Background(), di)
+				if err != nil {
+					n.logger.Errorf("failed to call StoreItem: %v", err)
+					return
+				}
+			}()
 		}
-
+		wg.Wait()
 	}
 	return nil, nil
 }
 
 func (n *Node) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate) (*doogle.StringMessage, error) {
-	if n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty)) {
+	if n.isValidSender(in) {
 		return &doogle.StringMessage{Message: "pong"}, nil
 	}
 	return nil, status.Error(codes.InvalidArgument, "invalid certificate")
@@ -296,7 +322,7 @@ func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringM
 	defer conn.Close()
 
 	c := doogle.NewDoogleClient(conn)
-	r, err := c.PingWithCertificate(ctx, n.certificate)
+	r, err := c.PingWithCertificate(context.Background(), n.certificate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "c.Ping failed: %v", err)
 	}
@@ -333,10 +359,11 @@ func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Cra
 	}
 
 	node.certificate = &doogle.NodeCertificate{
-		DoogleAddress: node.DAddr[:],
-		PublicKey:     node.publicKey,
-		Nonce:         node.nonce,
-		Difficulty:    int32(node.difficulty),
+		NetworkAddress: nAddr,
+		DoogleAddress:  node.DAddr[:],
+		PublicKey:      node.publicKey,
+		Nonce:          node.nonce,
+		Difficulty:     int32(node.difficulty),
 	}
 
 	// TODO: start PageRank computing scheduler

@@ -55,13 +55,15 @@ func newNodeAddress(nAddr string, pk []byte, difficulty int) (doogleAddress, []b
 	return doogleAddress{}, nil, errors.Errorf("could not solve puzzle")
 }
 
-func verifyAddress(da doogleAddress, nAddress string, pk, nonce []byte, difficulty int) bool {
-	actual := sha1.Sum(append([]byte(nAddress), pk...))
+func verifyAddress(da doogleAddress, nAddr string, pk, nonce []byte, difficulty int) bool {
+
+	actual := sha1.Sum(append([]byte(nAddr), pk...))
 	if da != actual {
 		return false
 	}
 
 	sol := sha1.Sum(append(actual[:], nonce...))
+
 	for i := 0; i < int(difficulty); i++ {
 		if sol[i] != 0 {
 			return false
