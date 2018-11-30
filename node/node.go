@@ -236,21 +236,20 @@ func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doo
 }
 
 func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.NodeInfos, error) {
-	if !n.isValidSender(in.Certificate) {
-		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
-	}
+	// verify the certificate, and if it is valid, update the routing table
+	n.isValidSender(in.Certificate)
 
 	var targetAddr doogleAddress
 	copy(targetAddr[:], in.DoogleAddress[:])
 
-	idx := getMostSignificantBit(n.DAddr.xor(targetAddr))
-	if idx < 0 {
+	msb := getMostSignificantBit(n.DAddr.xor(targetAddr))
+	if msb < 0 {
 		return nil, status.Error(codes.Internal, "collision occurred")
 	}
 
-	rb, ok := n.routingTable[idx]
+	rb, ok := n.routingTable[msb]
 	if !ok || rb == nil {
-		panic(fmt.Sprintf("the routing table on %d not exist", idx))
+		panic(fmt.Sprintf("the routing table on %d not exist", msb))
 	}
 
 	rb.mux.Lock()

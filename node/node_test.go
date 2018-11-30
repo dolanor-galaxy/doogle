@@ -456,12 +456,17 @@ func TestNode_StoreItem(t *testing.T) {
 }
 
 func TestNode_FindNode(t *testing.T) {
-	var mux = sync.Mutex{}
-
 	resetRoutingTable()
 	defer resetRoutingTable()
+	var wg sync.WaitGroup
 
-	cert := testServers[0].node.certificate
+	cert := &doogle.NodeCertificate{
+		DoogleAddress:  zeroAddress[:],
+		Difficulty:     1,
+		NetworkAddress: "",
+		Nonce:          []byte{0},
+		PublicKey:      []byte{0},
+	}
 	srv := testServers[1].node
 
 	for i, cc := range []struct {
@@ -552,22 +557,19 @@ func TestNode_FindNode(t *testing.T) {
 		},
 	} {
 		c := cc
+		wg.Add(1)
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			defer wg.Done()
 			var dAddr doogleAddress
 			copy(dAddr[:], c.targetAddr)
 			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
-			mux.Lock()
-			defer mux.Unlock()
 
-			rb, ok := srv.routingTable[msb]
-			if !ok {
-				t.Fatalf("failed to get routingTable at: %d", msb)
-			}
-			rb.bucket = c.before
+			srv.routingTable[msb].bucket = c.before
 			ret, err := srv.FindNode(context.Background(), &doogle.FindNodeRequest{
 				Certificate:   cert,
 				DoogleAddress: c.targetAddr,
 			})
+
 			assert.Equal(t, nil, err)
 			assert.Equal(t, len(c.expected), len(ret.Infos))
 
@@ -575,5 +577,6 @@ func TestNode_FindNode(t *testing.T) {
 				assert.Equal(t, c.expected[i], actual.NetworkAddress)
 			}
 		})
+		wg.Wait()
 	}
 }
