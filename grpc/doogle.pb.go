@@ -243,6 +243,11 @@ func (m *NodeCertificate) GetDifficulty() int32 {
 
 type StoreItemRequest struct {
 	Certificate          *NodeCertificate `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	Url                  string           `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	Title                string           `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Description          string           `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Edges                [][]byte         `protobuf:"bytes,5,rep,name=edges,proto3" json:"edges,omitempty"`
+	Index                []byte           `protobuf:"bytes,6,opt,name=index,proto3" json:"index,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -280,96 +285,37 @@ func (m *StoreItemRequest) GetCertificate() *NodeCertificate {
 	return nil
 }
 
-type StoreItemRequest_Item struct {
-	Url                  string   `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Indicies             []string `protobuf:"bytes,2,rep,name=indicies,proto3" json:"indicies,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *StoreItemRequest_Item) Reset()         { *m = StoreItemRequest_Item{} }
-func (m *StoreItemRequest_Item) String() string { return proto.CompactTextString(m) }
-func (*StoreItemRequest_Item) ProtoMessage()    {}
-func (*StoreItemRequest_Item) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{5, 0}
-}
-
-func (m *StoreItemRequest_Item) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StoreItemRequest_Item.Unmarshal(m, b)
-}
-func (m *StoreItemRequest_Item) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StoreItemRequest_Item.Marshal(b, m, deterministic)
-}
-func (m *StoreItemRequest_Item) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StoreItemRequest_Item.Merge(m, src)
-}
-func (m *StoreItemRequest_Item) XXX_Size() int {
-	return xxx_messageInfo_StoreItemRequest_Item.Size(m)
-}
-func (m *StoreItemRequest_Item) XXX_DiscardUnknown() {
-	xxx_messageInfo_StoreItemRequest_Item.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_StoreItemRequest_Item proto.InternalMessageInfo
-
-func (m *StoreItemRequest_Item) GetUrl() string {
+func (m *StoreItemRequest) GetUrl() string {
 	if m != nil {
 		return m.Url
 	}
 	return ""
 }
 
-func (m *StoreItemRequest_Item) GetIndicies() []string {
+func (m *StoreItemRequest) GetTitle() string {
 	if m != nil {
-		return m.Indicies
+		return m.Title
+	}
+	return ""
+}
+
+func (m *StoreItemRequest) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+func (m *StoreItemRequest) GetEdges() [][]byte {
+	if m != nil {
+		return m.Edges
 	}
 	return nil
 }
 
-type FoundIndex struct {
-	Url                  string   `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Indicies             []string `protobuf:"bytes,2,rep,name=indicies,proto3" json:"indicies,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *FoundIndex) Reset()         { *m = FoundIndex{} }
-func (m *FoundIndex) String() string { return proto.CompactTextString(m) }
-func (*FoundIndex) ProtoMessage()    {}
-func (*FoundIndex) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{6}
-}
-
-func (m *FoundIndex) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_FoundIndex.Unmarshal(m, b)
-}
-func (m *FoundIndex) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_FoundIndex.Marshal(b, m, deterministic)
-}
-func (m *FoundIndex) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_FoundIndex.Merge(m, src)
-}
-func (m *FoundIndex) XXX_Size() int {
-	return xxx_messageInfo_FoundIndex.Size(m)
-}
-func (m *FoundIndex) XXX_DiscardUnknown() {
-	xxx_messageInfo_FoundIndex.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_FoundIndex proto.InternalMessageInfo
-
-func (m *FoundIndex) GetUrl() string {
+func (m *StoreItemRequest) GetIndex() []byte {
 	if m != nil {
-		return m.Url
-	}
-	return ""
-}
-
-func (m *FoundIndex) GetIndicies() []string {
-	if m != nil {
-		return m.Indicies
+		return m.Index
 	}
 	return nil
 }
@@ -386,7 +332,7 @@ func (m *Item) Reset()         { *m = Item{} }
 func (m *Item) String() string { return proto.CompactTextString(m) }
 func (*Item) ProtoMessage()    {}
 func (*Item) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{7}
+	return fileDescriptor_947ca98c6f36e503, []int{6}
 }
 
 func (m *Item) XXX_Unmarshal(b []byte) error {
@@ -432,7 +378,7 @@ func (m *Items) Reset()         { *m = Items{} }
 func (m *Items) String() string { return proto.CompactTextString(m) }
 func (*Items) ProtoMessage()    {}
 func (*Items) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{8}
+	return fileDescriptor_947ca98c6f36e503, []int{7}
 }
 
 func (m *Items) XXX_Unmarshal(b []byte) error {
@@ -472,7 +418,7 @@ func (m *FindIndexRequest) Reset()         { *m = FindIndexRequest{} }
 func (m *FindIndexRequest) String() string { return proto.CompactTextString(m) }
 func (*FindIndexRequest) ProtoMessage()    {}
 func (*FindIndexRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{9}
+	return fileDescriptor_947ca98c6f36e503, []int{8}
 }
 
 func (m *FindIndexRequest) XXX_Unmarshal(b []byte) error {
@@ -510,7 +456,7 @@ func (m *FindIndexRequest) GetDoogleAddress() []byte {
 type FindIndexReply struct {
 	Certificate *NodeCertificate `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
 	// Types that are valid to be assigned to Result:
-	//	*FindIndexReply_Nodeinfos
+	//	*FindIndexReply_NodeInfos
 	//	*FindIndexReply_Items
 	Result               isFindIndexReply_Result `protobuf_oneof:"result"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
@@ -522,7 +468,7 @@ func (m *FindIndexReply) Reset()         { *m = FindIndexReply{} }
 func (m *FindIndexReply) String() string { return proto.CompactTextString(m) }
 func (*FindIndexReply) ProtoMessage()    {}
 func (*FindIndexReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{10}
+	return fileDescriptor_947ca98c6f36e503, []int{9}
 }
 
 func (m *FindIndexReply) XXX_Unmarshal(b []byte) error {
@@ -554,15 +500,15 @@ type isFindIndexReply_Result interface {
 	isFindIndexReply_Result()
 }
 
-type FindIndexReply_Nodeinfos struct {
-	Nodeinfos *NodeInfos `protobuf:"bytes,2,opt,name=nodeinfos,proto3,oneof"`
+type FindIndexReply_NodeInfos struct {
+	NodeInfos *NodeInfos `protobuf:"bytes,2,opt,name=nodeInfos,proto3,oneof"`
 }
 
 type FindIndexReply_Items struct {
 	Items *Items `protobuf:"bytes,3,opt,name=items,proto3,oneof"`
 }
 
-func (*FindIndexReply_Nodeinfos) isFindIndexReply_Result() {}
+func (*FindIndexReply_NodeInfos) isFindIndexReply_Result() {}
 
 func (*FindIndexReply_Items) isFindIndexReply_Result() {}
 
@@ -573,9 +519,9 @@ func (m *FindIndexReply) GetResult() isFindIndexReply_Result {
 	return nil
 }
 
-func (m *FindIndexReply) GetNodeinfos() *NodeInfos {
-	if x, ok := m.GetResult().(*FindIndexReply_Nodeinfos); ok {
-		return x.Nodeinfos
+func (m *FindIndexReply) GetNodeInfos() *NodeInfos {
+	if x, ok := m.GetResult().(*FindIndexReply_NodeInfos); ok {
+		return x.NodeInfos
 	}
 	return nil
 }
@@ -590,7 +536,7 @@ func (m *FindIndexReply) GetItems() *Items {
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*FindIndexReply) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
 	return _FindIndexReply_OneofMarshaler, _FindIndexReply_OneofUnmarshaler, _FindIndexReply_OneofSizer, []interface{}{
-		(*FindIndexReply_Nodeinfos)(nil),
+		(*FindIndexReply_NodeInfos)(nil),
 		(*FindIndexReply_Items)(nil),
 	}
 }
@@ -599,9 +545,9 @@ func _FindIndexReply_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	m := msg.(*FindIndexReply)
 	// result
 	switch x := m.Result.(type) {
-	case *FindIndexReply_Nodeinfos:
+	case *FindIndexReply_NodeInfos:
 		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Nodeinfos); err != nil {
+		if err := b.EncodeMessage(x.NodeInfos); err != nil {
 			return err
 		}
 	case *FindIndexReply_Items:
@@ -619,13 +565,13 @@ func _FindIndexReply_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 func _FindIndexReply_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
 	m := msg.(*FindIndexReply)
 	switch tag {
-	case 2: // result.nodeinfos
+	case 2: // result.nodeInfos
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
 		msg := new(NodeInfos)
 		err := b.DecodeMessage(msg)
-		m.Result = &FindIndexReply_Nodeinfos{msg}
+		m.Result = &FindIndexReply_NodeInfos{msg}
 		return true, err
 	case 3: // result.items
 		if wire != proto.WireBytes {
@@ -644,8 +590,8 @@ func _FindIndexReply_OneofSizer(msg proto.Message) (n int) {
 	m := msg.(*FindIndexReply)
 	// result
 	switch x := m.Result.(type) {
-	case *FindIndexReply_Nodeinfos:
-		s := proto.Size(x.Nodeinfos)
+	case *FindIndexReply_NodeInfos:
+		s := proto.Size(x.NodeInfos)
 		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
@@ -673,7 +619,7 @@ func (m *FindNodeRequest) Reset()         { *m = FindNodeRequest{} }
 func (m *FindNodeRequest) String() string { return proto.CompactTextString(m) }
 func (*FindNodeRequest) ProtoMessage()    {}
 func (*FindNodeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{11}
+	return fileDescriptor_947ca98c6f36e503, []int{10}
 }
 
 func (m *FindNodeRequest) XXX_Unmarshal(b []byte) error {
@@ -708,49 +654,49 @@ func (m *FindNodeRequest) GetDoogleAddress() []byte {
 	return nil
 }
 
-type FindeNodeReply struct {
+type FindNodeReply struct {
 	Certificate          *NodeCertificate `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
-	Nodeinfos            *NodeInfos       `protobuf:"bytes,2,opt,name=nodeinfos,proto3" json:"nodeinfos,omitempty"`
+	NodeInfos            *NodeInfos       `protobuf:"bytes,2,opt,name=nodeInfos,proto3" json:"nodeInfos,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *FindeNodeReply) Reset()         { *m = FindeNodeReply{} }
-func (m *FindeNodeReply) String() string { return proto.CompactTextString(m) }
-func (*FindeNodeReply) ProtoMessage()    {}
-func (*FindeNodeReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{12}
+func (m *FindNodeReply) Reset()         { *m = FindNodeReply{} }
+func (m *FindNodeReply) String() string { return proto.CompactTextString(m) }
+func (*FindNodeReply) ProtoMessage()    {}
+func (*FindNodeReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{11}
 }
 
-func (m *FindeNodeReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_FindeNodeReply.Unmarshal(m, b)
+func (m *FindNodeReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FindNodeReply.Unmarshal(m, b)
 }
-func (m *FindeNodeReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_FindeNodeReply.Marshal(b, m, deterministic)
+func (m *FindNodeReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FindNodeReply.Marshal(b, m, deterministic)
 }
-func (m *FindeNodeReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_FindeNodeReply.Merge(m, src)
+func (m *FindNodeReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FindNodeReply.Merge(m, src)
 }
-func (m *FindeNodeReply) XXX_Size() int {
-	return xxx_messageInfo_FindeNodeReply.Size(m)
+func (m *FindNodeReply) XXX_Size() int {
+	return xxx_messageInfo_FindNodeReply.Size(m)
 }
-func (m *FindeNodeReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_FindeNodeReply.DiscardUnknown(m)
+func (m *FindNodeReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_FindNodeReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_FindeNodeReply proto.InternalMessageInfo
+var xxx_messageInfo_FindNodeReply proto.InternalMessageInfo
 
-func (m *FindeNodeReply) GetCertificate() *NodeCertificate {
+func (m *FindNodeReply) GetCertificate() *NodeCertificate {
 	if m != nil {
 		return m.Certificate
 	}
 	return nil
 }
 
-func (m *FindeNodeReply) GetNodeinfos() *NodeInfos {
+func (m *FindNodeReply) GetNodeInfos() *NodeInfos {
 	if m != nil {
-		return m.Nodeinfos
+		return m.NodeInfos
 	}
 	return nil
 }
@@ -767,7 +713,7 @@ func (m *GetIndexReply) Reset()         { *m = GetIndexReply{} }
 func (m *GetIndexReply) String() string { return proto.CompactTextString(m) }
 func (*GetIndexReply) ProtoMessage()    {}
 func (*GetIndexReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_947ca98c6f36e503, []int{13}
+	return fileDescriptor_947ca98c6f36e503, []int{12}
 }
 
 func (m *GetIndexReply) XXX_Unmarshal(b []byte) error {
@@ -802,59 +748,58 @@ func init() {
 	proto.RegisterType((*NodeInfos)(nil), "doogle.NodeInfos")
 	proto.RegisterType((*NodeCertificate)(nil), "doogle.NodeCertificate")
 	proto.RegisterType((*StoreItemRequest)(nil), "doogle.StoreItemRequest")
-	proto.RegisterType((*StoreItemRequest_Item)(nil), "doogle.StoreItemRequest.Item")
-	proto.RegisterType((*FoundIndex)(nil), "doogle.FoundIndex")
 	proto.RegisterType((*Item)(nil), "doogle.Item")
 	proto.RegisterType((*Items)(nil), "doogle.Items")
 	proto.RegisterType((*FindIndexRequest)(nil), "doogle.FindIndexRequest")
 	proto.RegisterType((*FindIndexReply)(nil), "doogle.FindIndexReply")
 	proto.RegisterType((*FindNodeRequest)(nil), "doogle.FindNodeRequest")
-	proto.RegisterType((*FindeNodeReply)(nil), "doogle.FindeNodeReply")
+	proto.RegisterType((*FindNodeReply)(nil), "doogle.FindNodeReply")
 	proto.RegisterType((*GetIndexReply)(nil), "doogle.GetIndexReply")
 }
 
 func init() { proto.RegisterFile("doogle.proto", fileDescriptor_947ca98c6f36e503) }
 
 var fileDescriptor_947ca98c6f36e503 = []byte{
-	// 594 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0x5b, 0x6f, 0xd3, 0x30,
-	0x14, 0x26, 0x4b, 0xd3, 0x35, 0x67, 0xed, 0x56, 0xcc, 0x65, 0x51, 0x35, 0xa1, 0xca, 0x5c, 0x54,
-	0x84, 0x34, 0xb4, 0xae, 0xe2, 0x2a, 0x1e, 0xb8, 0x6c, 0x50, 0x21, 0xd0, 0xe4, 0x81, 0xe0, 0xb5,
-	0x4b, 0xdc, 0x62, 0x2d, 0x8d, 0x8b, 0xe3, 0x08, 0x2a, 0xf1, 0xc6, 0x23, 0x3f, 0x86, 0x5f, 0xc4,
-	0x7f, 0x41, 0xb6, 0x9b, 0xc6, 0xed, 0x5a, 0xb1, 0xa9, 0x12, 0x6f, 0xc7, 0xe7, 0xfa, 0xf9, 0xfb,
-	0x4e, 0x1c, 0xa8, 0x46, 0x9c, 0x0f, 0x62, 0xba, 0x3b, 0x12, 0x5c, 0x72, 0x54, 0x36, 0x27, 0xbc,
-	0x0e, 0xde, 0xc1, 0x70, 0x24, 0xc7, 0xf8, 0x2e, 0xd4, 0x8e, 0xa5, 0x60, 0xc9, 0xe0, 0x1d, 0x4d,
-	0xd3, 0xde, 0x80, 0xa2, 0x00, 0xd6, 0x87, 0xc6, 0x0c, 0x9c, 0xa6, 0xd3, 0xf2, 0x49, 0x7e, 0xc4,
-	0x9f, 0xa1, 0xf2, 0x9e, 0x47, 0xb4, 0x9b, 0xf4, 0x39, 0xba, 0x05, 0x35, 0xd3, 0xe9, 0x79, 0x14,
-	0x09, 0x9a, 0xa6, 0x3a, 0xb7, 0x4a, 0x66, 0x9d, 0xe8, 0x0e, 0x6c, 0x26, 0x54, 0x7e, 0xe3, 0xe2,
-	0x34, 0x4f, 0x5b, 0xd3, 0x2d, 0xe7, 0xbc, 0x78, 0x1f, 0xfc, 0xbc, 0xb3, 0x2a, 0xf2, 0x98, 0x32,
-	0x02, 0xa7, 0xe9, 0xb6, 0x36, 0xda, 0xf5, 0xdd, 0xc9, 0x05, 0xf2, 0x0c, 0x62, 0xc2, 0xf8, 0x97,
-	0x03, 0x5b, 0xca, 0xf7, 0x92, 0x0a, 0xc9, 0xfa, 0x2c, 0xec, 0x49, 0x7a, 0x4e, 0x58, 0x3b, 0xe0,
-	0x8f, 0xb2, 0x93, 0x98, 0x85, 0x6f, 0xe9, 0x58, 0x23, 0xaa, 0x92, 0xc2, 0x81, 0xae, 0x82, 0x97,
-	0xf0, 0x24, 0xa4, 0x81, 0xab, 0x23, 0xe6, 0x80, 0x6e, 0x00, 0x44, 0xac, 0xdf, 0x67, 0x61, 0x16,
-	0xcb, 0x71, 0x50, 0x6a, 0x3a, 0x2d, 0x8f, 0x58, 0x1e, 0xfc, 0xd3, 0x81, 0xfa, 0xb1, 0xe4, 0x82,
-	0x76, 0x25, 0x1d, 0x12, 0xfa, 0x35, 0xa3, 0xa9, 0x44, 0x8f, 0x61, 0x23, 0x2c, 0xd0, 0x69, 0x30,
-	0x1b, 0xed, 0x6d, 0xfb, 0x42, 0x16, 0x78, 0x62, 0xe7, 0x36, 0x3a, 0x50, 0x52, 0x9d, 0x50, 0x1d,
-	0xdc, 0x4c, 0xc4, 0x13, 0x29, 0x94, 0x89, 0x1a, 0x50, 0x61, 0x49, 0xc4, 0x42, 0x46, 0x15, 0x9d,
-	0x6e, 0xcb, 0x27, 0xd3, 0x33, 0x7e, 0x02, 0x70, 0xc8, 0xb3, 0x24, 0xea, 0x26, 0x11, 0xfd, 0x7e,
-	0xc1, 0xda, 0x07, 0x4b, 0x27, 0xee, 0x80, 0x1f, 0xf3, 0xb0, 0x17, 0x93, 0x5e, 0x72, 0xaa, 0xf9,
-	0x72, 0x48, 0xe1, 0xc0, 0xf7, 0xc0, 0x53, 0x75, 0x29, 0xc2, 0xe0, 0x31, 0x65, 0x4c, 0x84, 0xab,
-	0xe6, 0xf7, 0xd4, 0x8c, 0x98, 0x10, 0x4e, 0xa1, 0x7e, 0xc8, 0x26, 0xf8, 0x56, 0x67, 0xe9, 0xac,
-	0xde, 0x6b, 0x0b, 0xf4, 0xc6, 0xbf, 0x1d, 0xd8, 0xb4, 0xa6, 0x8e, 0xe2, 0xf1, 0x2a, 0x33, 0xf7,
-	0xc0, 0x4f, 0x78, 0x44, 0xcd, 0x8e, 0xae, 0xe9, 0xc2, 0xcb, 0xf3, 0x3b, 0x9a, 0xbe, 0xb9, 0x44,
-	0x8a, 0x2c, 0x74, 0x3b, 0x67, 0xc6, 0xd5, 0xe9, 0x35, 0x9b, 0x19, 0x95, 0x6a, 0xa2, 0x2f, 0x2a,
-	0x50, 0x16, 0x34, 0xcd, 0x62, 0x89, 0x05, 0x6c, 0x29, 0xc0, 0xaa, 0xdd, 0x7f, 0x63, 0xe9, 0x87,
-	0x21, 0x89, 0x9a, 0xa1, 0x2b, 0x92, 0x74, 0xff, 0x3c, 0x24, 0x59, 0x14, 0xe1, 0x9b, 0x50, 0x7b,
-	0x4d, 0xa5, 0xa5, 0x10, 0x82, 0x52, 0x26, 0x62, 0xb3, 0x4c, 0x3e, 0xd1, 0x76, 0xfb, 0x8f, 0x0b,
-	0xe5, 0x57, 0xba, 0x09, 0xea, 0x80, 0x3f, 0xfd, 0xdc, 0x50, 0x90, 0xb7, 0x9e, 0xff, 0x02, 0x1b,
-	0x53, 0xaa, 0xf5, 0x6b, 0x87, 0x9e, 0x81, 0x3f, 0x5d, 0x84, 0xa2, 0x6a, 0x7e, 0x23, 0x1b, 0xd7,
-	0x17, 0x44, 0x14, 0xa6, 0xa7, 0x50, 0xc9, 0x65, 0x41, 0xdb, 0x76, 0x8e, 0x25, 0xd4, 0x6c, 0xb1,
-	0xc5, 0xe6, 0x01, 0x5c, 0x39, 0x62, 0xc9, 0xe0, 0x13, 0x93, 0x5f, 0xec, 0x27, 0x6b, 0x19, 0x9f,
-	0x8d, 0x6b, 0xc5, 0xa5, 0xec, 0xf7, 0xb9, 0x03, 0x25, 0xd5, 0x06, 0x2d, 0x0e, 0x2f, 0xab, 0xda,
-	0x83, 0xb2, 0xaa, 0xfa, 0xc0, 0xd1, 0x99, 0xf7, 0x74, 0x59, 0xc9, 0x23, 0xa8, 0xe4, 0x8a, 0xfc,
-	0x73, 0xd8, 0xac, 0x74, 0x0f, 0x61, 0xfd, 0x88, 0xa7, 0xf2, 0xa3, 0x88, 0x2f, 0x86, 0xf2, 0xa4,
-	0xac, 0x7f, 0x52, 0xfb, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x16, 0x08, 0x83, 0x16, 0xb4, 0x06,
-	0x00, 0x00,
+	// 617 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0xeb, 0x6e, 0xd3, 0x3e,
+	0x14, 0xff, 0x67, 0x69, 0xb2, 0xe6, 0xb4, 0xdd, 0xfa, 0x37, 0x97, 0x45, 0xd5, 0x84, 0x2a, 0x73,
+	0x51, 0x11, 0xd2, 0xa6, 0x75, 0x13, 0x02, 0x24, 0x3e, 0x70, 0x19, 0x50, 0x21, 0xd0, 0xe4, 0x81,
+	0xe0, 0x6b, 0x97, 0xb8, 0xc5, 0x5a, 0x1a, 0x17, 0xdb, 0x11, 0x54, 0x3c, 0x02, 0x0f, 0xc3, 0x43,
+	0xf0, 0x0a, 0x3c, 0x10, 0xb2, 0xd3, 0x34, 0xee, 0x4d, 0x4c, 0x1a, 0xe2, 0xdb, 0xb9, 0x9f, 0xdf,
+	0xf9, 0x9d, 0x13, 0x07, 0xea, 0x31, 0xe7, 0xc3, 0x84, 0xee, 0x8d, 0x05, 0x57, 0x1c, 0xf9, 0xb9,
+	0x86, 0x37, 0xc1, 0x3b, 0x1e, 0x8d, 0xd5, 0x04, 0xdf, 0x85, 0xc6, 0xa9, 0x12, 0x2c, 0x1d, 0xbe,
+	0xa1, 0x52, 0xf6, 0x87, 0x14, 0x85, 0xb0, 0x39, 0xca, 0xc5, 0xd0, 0x69, 0x3b, 0x9d, 0x80, 0x14,
+	0x2a, 0xfe, 0x08, 0xd5, 0xb7, 0x3c, 0xa6, 0xbd, 0x74, 0xc0, 0xd1, 0x2d, 0x68, 0xe4, 0x95, 0x9e,
+	0xc4, 0xb1, 0xa0, 0x52, 0x9a, 0xd8, 0x3a, 0x99, 0x37, 0xa2, 0x3b, 0xb0, 0x95, 0x52, 0xf5, 0x85,
+	0x8b, 0xf3, 0x22, 0x6c, 0xc3, 0x94, 0x5c, 0xb0, 0xe2, 0x43, 0x08, 0x8a, 0xca, 0x3a, 0xc9, 0x63,
+	0x5a, 0x08, 0x9d, 0xb6, 0xdb, 0xa9, 0x75, 0x9b, 0x7b, 0xd3, 0x01, 0x8a, 0x08, 0x92, 0xbb, 0xf1,
+	0x77, 0x07, 0xb6, 0xb5, 0xed, 0x19, 0x15, 0x8a, 0x0d, 0x58, 0xd4, 0x57, 0xf4, 0x82, 0xb0, 0x76,
+	0x21, 0x18, 0x67, 0x67, 0x09, 0x8b, 0x5e, 0xd3, 0x89, 0x41, 0x54, 0x27, 0xa5, 0x01, 0x5d, 0x05,
+	0x2f, 0xe5, 0x69, 0x44, 0x43, 0xd7, 0x78, 0x72, 0x05, 0xdd, 0x00, 0x88, 0xd9, 0x60, 0xc0, 0xa2,
+	0x2c, 0x51, 0x93, 0xb0, 0xd2, 0x76, 0x3a, 0x1e, 0xb1, 0x2c, 0xf8, 0xa7, 0x03, 0xcd, 0x53, 0xc5,
+	0x05, 0xed, 0x29, 0x3a, 0x22, 0xf4, 0x73, 0x46, 0xa5, 0x42, 0x0f, 0xa1, 0x16, 0x95, 0xe8, 0x0c,
+	0x98, 0x5a, 0x77, 0xc7, 0x1e, 0xc8, 0x02, 0x4f, 0xec, 0x58, 0xd4, 0x04, 0x37, 0x13, 0xc9, 0x94,
+	0x2f, 0x2d, 0x6a, 0x5c, 0x8a, 0xa9, 0x24, 0xc7, 0x15, 0x90, 0x5c, 0x41, 0x6d, 0xa8, 0xc5, 0x54,
+	0x46, 0x82, 0x8d, 0x15, 0xe3, 0xa9, 0x01, 0x16, 0x10, 0xdb, 0xa4, 0xf3, 0x68, 0x3c, 0xa4, 0x32,
+	0xf4, 0xda, 0xae, 0x9e, 0xc7, 0x28, 0xda, 0xca, 0xd2, 0x98, 0x7e, 0x0d, 0xfd, 0x7c, 0x4a, 0xa3,
+	0xe0, 0xfb, 0x50, 0xd1, 0xf8, 0x8b, 0xee, 0x4e, 0xd9, 0x7d, 0x17, 0x82, 0x84, 0x47, 0xfd, 0x84,
+	0xf4, 0xd3, 0x73, 0x83, 0xca, 0x21, 0xa5, 0x01, 0xdf, 0x03, 0x4f, 0xe7, 0x49, 0x84, 0xc1, 0x63,
+	0x5a, 0x98, 0x2e, 0xaf, 0x5e, 0xcc, 0x6a, 0x58, 0xc9, 0x5d, 0x58, 0x42, 0xf3, 0x05, 0x4b, 0xe3,
+	0x9e, 0xee, 0xf8, 0x17, 0x98, 0x5a, 0xda, 0xf9, 0xc6, 0x8a, 0x9d, 0xe3, 0x1f, 0x0e, 0x6c, 0x59,
+	0x5d, 0xc7, 0xc9, 0xe4, 0x32, 0x3d, 0x0f, 0x20, 0x48, 0x8b, 0x83, 0x35, 0xfd, 0x6a, 0xdd, 0xff,
+	0x17, 0xef, 0x54, 0xbe, 0xfa, 0x8f, 0x94, 0x51, 0xe8, 0x76, 0xc1, 0x8c, 0x6b, 0xc2, 0x1b, 0x36,
+	0x33, 0x3a, 0x34, 0xf7, 0x3e, 0xad, 0x82, 0x2f, 0xa8, 0xcc, 0x12, 0x85, 0x05, 0x6c, 0x6b, 0xc0,
+	0xba, 0xdc, 0x3f, 0x63, 0xe9, 0x1b, 0x34, 0xca, 0x9e, 0x97, 0xe4, 0x68, 0xff, 0x22, 0x1c, 0x59,
+	0x0c, 0xe1, 0x9b, 0xd0, 0x78, 0x49, 0x95, 0xb5, 0x20, 0x04, 0x95, 0x4c, 0x24, 0xf9, 0x2d, 0x05,
+	0xc4, 0xc8, 0xdd, 0x5f, 0x2e, 0xf8, 0xcf, 0x4d, 0x11, 0x74, 0x04, 0xc1, 0xec, 0x8b, 0x43, 0x61,
+	0x51, 0x7a, 0xf1, 0x23, 0x6c, 0xcd, 0x98, 0x36, 0x0f, 0x1e, 0x7a, 0x0c, 0xc1, 0xec, 0x0e, 0xca,
+	0xac, 0xc5, 0x83, 0x6c, 0x5d, 0x5f, 0xe1, 0xd1, 0x98, 0x1e, 0x41, 0xb5, 0x60, 0x08, 0xed, 0xd8,
+	0x31, 0xd6, 0x9e, 0x5a, 0xd7, 0x96, 0x1d, 0x3a, 0xf7, 0x18, 0xae, 0x9c, 0xb0, 0x74, 0xf8, 0x81,
+	0xa9, 0x4f, 0xf6, 0xa3, 0xb5, 0x8e, 0xce, 0xb2, 0xcc, 0xfc, 0x0b, 0x7d, 0x04, 0x15, 0x5d, 0x06,
+	0xad, 0x76, 0xaf, 0xcb, 0x3a, 0x00, 0x5f, 0x67, 0xbd, 0xe3, 0x68, 0xe9, 0x45, 0x5d, 0x97, 0xf2,
+	0x00, 0xaa, 0xc5, 0x42, 0xfe, 0xd8, 0x6c, 0x7e, 0x73, 0xfb, 0xb0, 0x79, 0xc2, 0xa5, 0x7a, 0x2f,
+	0x92, 0x75, 0x89, 0xf3, 0x5b, 0x39, 0xf3, 0xcd, 0xef, 0xe9, 0xf0, 0x77, 0x00, 0x00, 0x00, 0xff,
+	0xff, 0x33, 0xfa, 0x31, 0x0a, 0xae, 0x06, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -874,14 +819,14 @@ type DoogleClient interface {
 	// find index of given key
 	FindIndex(ctx context.Context, in *FindIndexRequest, opts ...grpc.CallOption) (*FindIndexReply, error)
 	// return k closed nodes to given address
-	FindNode(ctx context.Context, in *FindNodeRequest, opts ...grpc.CallOption) (*FindeNodeReply, error)
+	FindNode(ctx context.Context, in *FindNodeRequest, opts ...grpc.CallOption) (*FindNodeReply, error)
 	// health check
 	PingWithCertificate(ctx context.Context, in *NodeCertificate, opts ...grpc.CallOption) (*StringMessage, error)
 	// the following endpoints can be accessed from outside of the network.
 	Ping(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*StringMessage, error)
 	PingTo(ctx context.Context, in *NodeInfo, opts ...grpc.CallOption) (*StringMessage, error)
 	GetIndex(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*GetIndexReply, error)
-	PostUrl(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*StringMessage, error)
+	PostUrl(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type doogleClient struct {
@@ -910,8 +855,8 @@ func (c *doogleClient) FindIndex(ctx context.Context, in *FindIndexRequest, opts
 	return out, nil
 }
 
-func (c *doogleClient) FindNode(ctx context.Context, in *FindNodeRequest, opts ...grpc.CallOption) (*FindeNodeReply, error) {
-	out := new(FindeNodeReply)
+func (c *doogleClient) FindNode(ctx context.Context, in *FindNodeRequest, opts ...grpc.CallOption) (*FindNodeReply, error) {
+	out := new(FindNodeReply)
 	err := c.cc.Invoke(ctx, "/doogle.Doogle/FindNode", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -955,8 +900,8 @@ func (c *doogleClient) GetIndex(ctx context.Context, in *StringMessage, opts ...
 	return out, nil
 }
 
-func (c *doogleClient) PostUrl(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*StringMessage, error) {
-	out := new(StringMessage)
+func (c *doogleClient) PostUrl(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/doogle.Doogle/PostUrl", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -971,14 +916,14 @@ type DoogleServer interface {
 	// find index of given key
 	FindIndex(context.Context, *FindIndexRequest) (*FindIndexReply, error)
 	// return k closed nodes to given address
-	FindNode(context.Context, *FindNodeRequest) (*FindeNodeReply, error)
+	FindNode(context.Context, *FindNodeRequest) (*FindNodeReply, error)
 	// health check
 	PingWithCertificate(context.Context, *NodeCertificate) (*StringMessage, error)
 	// the following endpoints can be accessed from outside of the network.
 	Ping(context.Context, *StringMessage) (*StringMessage, error)
 	PingTo(context.Context, *NodeInfo) (*StringMessage, error)
 	GetIndex(context.Context, *StringMessage) (*GetIndexReply, error)
-	PostUrl(context.Context, *StringMessage) (*StringMessage, error)
+	PostUrl(context.Context, *StringMessage) (*Empty, error)
 }
 
 func RegisterDoogleServer(s *grpc.Server, srv DoogleServer) {

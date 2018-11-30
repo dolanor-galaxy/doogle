@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -54,11 +56,14 @@ type Node struct {
 	// type: map{doogleAddressStr -> *item}
 	items sync.Map
 
-	// for certification
+	// for certificate creation
 	publicKey  []byte
 	secretKey  []byte
 	nonce      []byte
 	difficulty int
+
+	// certificate
+	certificate *doogle.NodeCertificate
 
 	// logger
 	logger *logrus.Logger
@@ -167,11 +172,12 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doogle.Empty, error) {
 	return nil, nil
 }
+
 func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doogle.FindIndexReply, error) {
 	return nil, nil
 }
 
-func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.FindeNodeReply, error) {
+func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.FindNodeReply, error) {
 	return nil, nil
 }
 
@@ -179,17 +185,67 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 	return nil, nil
 }
 
-func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.StringMessage, error) {
-	// 1. call crawler
-	// 2. get parsed result
-	// 3. merge into DHT
+func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.Empty, error) {
+	// analyze the given url
+	title, desc, tokens, eURLs, err := n.crawler.AnalyzeURL(in.Message)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to analyze to url: %v", err)
+	}
+
+	// prepare StoreItemRequest
+	edges := make([][]byte, len(eURLs))
+	for i, u := range eURLs {
+		edges[i] = sha1.Sum([]byte(u))[:]
+	}
+
+	di := &doogle.StoreItemRequest{
+		Url:         in.Message,
+		Title:       title,
+		Description: desc,
+		Edges:       edges,
+		Certificate: n.certificate,
+		Index:       nil,
+	}
+
+	// make StoreItem requests to store the url into DHT
+	for _, token := range tokens {
+		addr := sha1.Sum([]byte(token))[:]
+		di.Index = addr
+
+		// find closes nodes to token's address
+		rep, err := n.FindNode(ctx, &doogle.FindNodeRequest{
+			Certificate:   n.certificate,
+			DoogleAddress: addr,
+		})
+
+		if err != nil {
+			n.logger.Errorf("failed to find node for %s : %v", hex.EncodeToString(addr), err)
+		}
+
+		// call StoreItem request on closest nodes
+		for _, ni := range rep.NodeInfos.Infos {
+			conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "did not connect: %v", err)
+			}
+
+			c := doogle.NewDoogleClient(conn)
+			_, err = c.StoreItem(ctx, di)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to call StoreItem: %v", err)
+			}
+			conn.Close()
+		}
+
+	}
 	return nil, nil
 }
 
 func (n *Node) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate) (*doogle.StringMessage, error) {
-	// TODO: logging the result of validation
-	n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty))
-	return &doogle.StringMessage{Message: "pong"}, nil
+	if n.isValidSender(ctx, in.DoogleAddress, in.PublicKey, in.Nonce, int(in.Difficulty)) {
+		return &doogle.StringMessage{Message: "pong"}, nil
+	}
+	return nil, status.Error(codes.InvalidArgument, "invalid certificate")
 }
 
 func (n *Node) Ping(ctx context.Context, in *doogle.StringMessage) (*doogle.StringMessage, error) {
@@ -204,12 +260,7 @@ func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringM
 	defer conn.Close()
 
 	c := doogle.NewDoogleClient(conn)
-	r, err := c.PingWithCertificate(ctx, &doogle.NodeCertificate{
-		DoogleAddress: n.DAddr[:],
-		PublicKey:     n.publicKey,
-		Nonce:         n.nonce,
-		Difficulty:    int32(n.difficulty),
-	})
+	r, err := c.PingWithCertificate(ctx, n.certificate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "c.Ping failed: %v", err)
 	}
@@ -243,6 +294,13 @@ func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Cra
 	node.DAddr, node.nonce, err = newNodeAddress(nAddr, node.publicKey, node.difficulty)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate address")
+	}
+
+	node.certificate = &doogle.NodeCertificate{
+		DoogleAddress: node.DAddr[:],
+		PublicKey:     node.publicKey,
+		Nonce:         node.nonce,
+		Difficulty:    int32(node.difficulty),
 	}
 
 	// TODO: start PageRank computing scheduler

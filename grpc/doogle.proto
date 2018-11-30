@@ -33,7 +33,7 @@ service Doogle {
     rpc FindIndex(FindIndexRequest) returns(FindIndexReply);
 
     // return k closed nodes to given address
-    rpc FindNode(FindNodeRequest) returns(FindeNodeReply);
+    rpc FindNode(FindNodeRequest) returns(FindNodeReply);
 
     // health check
     rpc PingWithCertificate (NodeCertificate) returns (StringMessage);
@@ -42,20 +42,16 @@ service Doogle {
     rpc Ping (StringMessage) returns(StringMessage);
     rpc PingTo(NodeInfo) returns (StringMessage); // request to send PingRequest to given node
     rpc GetIndex(StringMessage) returns(GetIndexReply); // get index of given query
-    rpc PostUrl(StringMessage) returns (StringMessage); // post url in order for it to be indexed
+    rpc PostUrl(StringMessage) returns (Empty); // post url in order for it to be indexed
 }
 
 message StoreItemRequest {
     NodeCertificate certificate = 1;
-    message Item {
-        string url = 1;
-        repeated string indicies = 2;
-    }
-}
-
-message FoundIndex {
-    string url = 1;
-    repeated string indicies = 2;
+    string url = 2;
+    string title = 3;
+    string description = 4;
+    repeated bytes edges = 5;
+    bytes index = 6;
 }
 
 message Item {
@@ -75,7 +71,7 @@ message FindIndexRequest {
 message FindIndexReply {
     NodeCertificate certificate = 1;
     oneof result {
-        NodeInfos nodeinfos = 2;
+        NodeInfos nodeInfos = 2;
         Items items = 3;
     }
 }
@@ -85,9 +81,9 @@ message FindNodeRequest {
     bytes doogleAddress = 2;
 }
 
-message FindeNodeReply {
+message FindNodeReply {
     NodeCertificate certificate = 1;
-    NodeInfos nodeinfos = 2;
+    NodeInfos nodeInfos = 2;
 }
 
 message GetIndexReply {

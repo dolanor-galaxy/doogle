@@ -21,7 +21,7 @@ var zeroAddress = doogleAddress{
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-var zerInfo = &nodeInfo{zeroAddress, "", 0}
+var zeroInfo = &nodeInfo{zeroAddress, "", 0}
 
 const (
 	localhost = "localhost"
@@ -97,33 +97,33 @@ func TestPopAndAppend(t *testing.T) {
 	}{
 		{
 			idx:    0,
-			before: []*nodeInfo{zerInfo},
+			before: []*nodeInfo{zeroInfo},
 			after:  []*nodeInfo{targetInfo},
 		},
 		{
 			idx:    0,
-			before: []*nodeInfo{zerInfo, zerInfo, zerInfo},
-			after:  []*nodeInfo{zerInfo, zerInfo, targetInfo},
+			before: []*nodeInfo{zeroInfo, zeroInfo, zeroInfo},
+			after:  []*nodeInfo{zeroInfo, zeroInfo, targetInfo},
 		},
 		{
 			idx:    0,
-			before: []*nodeInfo{targetInfo, zerInfo, zerInfo},
-			after:  []*nodeInfo{zerInfo, zerInfo, targetInfo},
+			before: []*nodeInfo{targetInfo, zeroInfo, zeroInfo},
+			after:  []*nodeInfo{zeroInfo, zeroInfo, targetInfo},
 		},
 		{
 			idx:    1,
-			before: []*nodeInfo{targetInfo, zerInfo, zerInfo},
-			after:  []*nodeInfo{targetInfo, zerInfo, targetInfo},
+			before: []*nodeInfo{targetInfo, zeroInfo, zeroInfo},
+			after:  []*nodeInfo{targetInfo, zeroInfo, targetInfo},
 		},
 		{
 			idx:    2,
-			before: []*nodeInfo{targetInfo, zerInfo, zerInfo},
-			after:  []*nodeInfo{targetInfo, zerInfo, targetInfo},
+			before: []*nodeInfo{targetInfo, zeroInfo, zeroInfo},
+			after:  []*nodeInfo{targetInfo, zeroInfo, targetInfo},
 		},
 		{
 			idx:    2,
-			before: []*nodeInfo{targetInfo, zerInfo, zerInfo, targetInfo, zerInfo},
-			after:  []*nodeInfo{targetInfo, zerInfo, targetInfo, zerInfo, targetInfo},
+			before: []*nodeInfo{targetInfo, zeroInfo, zeroInfo, targetInfo, zeroInfo},
+			after:  []*nodeInfo{targetInfo, zeroInfo, targetInfo, zeroInfo, targetInfo},
 		},
 	} {
 		c := cc
@@ -288,43 +288,43 @@ func TestUpdateRoutingTable(t *testing.T) {
 			after:  []*nodeInfo{target},
 		},
 		{
-			before: []*nodeInfo{zerInfo},
-			after:  []*nodeInfo{zerInfo, target},
+			before: []*nodeInfo{zeroInfo},
+			after:  []*nodeInfo{zeroInfo, target},
 		},
 		{
-			before: []*nodeInfo{target, zerInfo},
-			after:  []*nodeInfo{zerInfo, target},
+			before: []*nodeInfo{target, zeroInfo},
+			after:  []*nodeInfo{zeroInfo, target},
 		},
 		{
-			before: []*nodeInfo{zerInfo, zerInfo},
-			after:  []*nodeInfo{zerInfo, zerInfo, target},
-		},
-		{
-			before: []*nodeInfo{
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, target, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-			},
-			after: []*nodeInfo{
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, target,
-			},
+			before: []*nodeInfo{zeroInfo, zeroInfo},
+			after:  []*nodeInfo{zeroInfo, zeroInfo, target},
 		},
 		{
 			before: []*nodeInfo{
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, target, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
 			},
 			after: []*nodeInfo{
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, zerInfo,
-				zerInfo, zerInfo, zerInfo, zerInfo, target,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, target,
+			},
+		},
+		{
+			before: []*nodeInfo{
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+			},
+			after: []*nodeInfo{
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, zeroInfo,
+				zeroInfo, zeroInfo, zeroInfo, zeroInfo, target,
 			},
 		},
 	} {
