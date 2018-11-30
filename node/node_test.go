@@ -87,12 +87,11 @@ func resetRoutingTable() {
 	}
 }
 
-func TestVerifyAddressOnServers(t *testing.T) {
-	for i, cc := range testServers {
-		c := cc
-		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			assert.Equal(t, true, verifyAddress(c.node.DAddr, localhost+c.port, c.node.publicKey, c.node.nonce, c.node.difficulty))
-		})
+func resetDHT() {
+	for i := range testServers {
+		// reset routing table on testServers[0]
+		testServers[i].node.dht = sync.Map{}
+		testServers[i].node.items = sync.Map{}
 	}
 }
 
@@ -152,7 +151,9 @@ func TestPopAndAppend(t *testing.T) {
 	}
 }
 
-func TestPingWithCertificate(t *testing.T) {
+func TestNode_PingWithCertificate(t *testing.T) {
+	defer resetRoutingTable()
+
 	for i, cc := range testServers {
 		var tIDx = i + 1
 		if tIDx == len(testServers) {
@@ -176,7 +177,9 @@ func TestPingWithCertificate(t *testing.T) {
 	}
 }
 
-func TestPingWithoutCertificate(t *testing.T) {
+func TestNode_Ping(t *testing.T) {
+	defer resetRoutingTable()
+
 	for i, cc := range testServers {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
@@ -196,7 +199,9 @@ func TestPingWithoutCertificate(t *testing.T) {
 
 }
 
-func TestPingTo(t *testing.T) {
+func TestNode_PingTo(t *testing.T) {
+	defer resetRoutingTable()
+
 	for i, cc := range []struct {
 		fromPort   string
 		toPort     string
@@ -224,7 +229,7 @@ func TestPingTo(t *testing.T) {
 	}
 }
 
-func TestIsValidSender(t *testing.T) {
+func TestNode_IsValidSender(t *testing.T) {
 	for i, cc := range []struct {
 		networkAddr string
 		rawAddr     []byte
@@ -275,9 +280,10 @@ func TestIsValidSender(t *testing.T) {
 	}
 }
 
-func TestUpdateRoutingTable(t *testing.T) {
+func TestNode_UpdateRoutingTable(t *testing.T) {
 	// reset routing table
 	resetRoutingTable()
+	defer resetRoutingTable()
 
 	// update target nodeInfo
 	target := &nodeInfo{
@@ -349,7 +355,10 @@ func TestUpdateRoutingTable(t *testing.T) {
 	}
 }
 
-func TestNodeStoreIndex(t *testing.T) {
+func TestNode_StoreItem(t *testing.T) {
+	resetDHT()
+	defer resetDHT()
+
 	target := testServers[1]
 	from := testServers[0]
 
@@ -445,6 +454,128 @@ func TestNodeStoreIndex(t *testing.T) {
 			dhtV, ok := _dhtV.(*dhtValue)
 			assert.Equal(t, true, ok)
 			assert.Equal(t, c.expLen, len(dhtV.itemAddresses))
+		})
+	}
+}
+
+func TestNode_FindNode(t *testing.T) {
+	resetRoutingTable()
+	defer resetRoutingTable()
+
+	cert := testServers[0].node.certificate
+	srv := testServers[1].node
+
+	for i, cc := range []struct {
+		targetAddr []byte
+		before     []*nodeInfo
+		expected   []string
+	}{
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+			},
+			expected: []string{string([]byte{2}), string([]byte{3}), string([]byte{4})},
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected: []string{string([]byte{3}), string([]byte{4}), string([]byte{2})},
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected: []string{string([]byte{2}), string([]byte{3})},
+		},
+		{
+			targetAddr: []byte{1},
+			before:     []*nodeInfo{},
+			expected:   []string{},
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+				},
+				{
+					nAddr: string([]byte{5}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{6}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected: []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
+		},
+	} {
+		var mux = sync.Mutex{}
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			var dAddr doogleAddress
+			copy(dAddr[:], c.targetAddr)
+			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
+			mux.Lock()
+			defer mux.Unlock()
+
+			rb, ok := srv.routingTable[msb]
+			if !ok {
+				t.Fatalf("failed to get routingTable at: %d", msb)
+			}
+			rb.bucket = c.before
+			ret, err := srv.FindNode(context.Background(), &doogle.FindNodeRequest{
+				Certificate:   cert,
+				DoogleAddress: c.targetAddr,
+			})
+			assert.Equal(t, nil, err)
+			assert.Equal(t, len(c.expected), len(ret.Infos))
+
+			for i, actual := range ret.Infos {
+				assert.Equal(t, c.expected[i], actual.NetworkAddress)
+			}
 		})
 	}
 }

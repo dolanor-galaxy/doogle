@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -143,7 +144,8 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 
 	// lock the bucket
 	rb.mux.Lock()
-	defer rb.mux.Unlock() // unlock the bucket
+	defer rb.mux.Unlock()
+
 	for i, n := range rb.bucket {
 		if n.dAddr == info.dAddr {
 			// Update accessedAt on target node.
@@ -232,7 +234,59 @@ func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doo
 	return nil, nil
 }
 
-func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.FindNodeReply, error) {
+func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.NodeInfos, error) {
+	if !n.isValidSender(in.Certificate) {
+		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
+	}
+
+	var targetAddr doogleAddress
+	copy(targetAddr[:], in.DoogleAddress[:])
+
+	idx := getMostSignificantBit(n.DAddr.xor(targetAddr))
+	if idx < 0 {
+		return nil, status.Error(codes.Internal, "collision occurred")
+	}
+
+	rb, ok := n.routingTable[idx]
+	if !ok || rb == nil {
+		panic(fmt.Sprintf("the routing table on %d not exist", idx))
+	}
+
+	rb.mux.Lock()
+	defer rb.mux.Unlock()
+
+	if len(rb.bucket) < alpha {
+		ret := make([]*doogle.NodeInfo, len(rb.bucket))
+		for i := range ret {
+			ret[i] = &doogle.NodeInfo{
+				DoogleAddress:  rb.bucket[i].dAddr[:],
+				NetworkAddress: rb.bucket[i].nAddr,
+			}
+		}
+
+		// TODO: handle the case where len(rb.bucket) == 0
+		return &doogle.NodeInfos{Infos: ret}, nil
+	}
+
+	ns := make([]*nodeInfo, len(rb.bucket))
+	copy(ns, rb.bucket)
+
+	sort.Slice(ns, func(i, j int) bool {
+		return ns[i].dAddr.xor(targetAddr).lessThanEqual(ns[j].dAddr.xor(targetAddr))
+	})
+
+	ret := make([]*doogle.NodeInfo, alpha)
+	for i := range ret {
+		ret[i] = &doogle.NodeInfo{
+			NetworkAddress: ns[i].nAddr,
+			DoogleAddress:  ns[i].dAddr[:],
+		}
+	}
+
+	return &doogle.NodeInfos{Infos: ret}, nil
+}
+
+func (n *Node) findNode(addr doogleAddress) ([]*nodeInfo, error) {
 	return nil, nil
 }
 
@@ -267,12 +321,7 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 		addr := sha1.Sum([]byte(token))
 		di.Index = string(addr[:])
 
-		// find closes nodes to token's address
-		rep, err := n.FindNode(context.Background(), &doogle.FindNodeRequest{
-			Certificate:   n.certificate,
-			DoogleAddress: addr[:],
-		})
-
+		rep, err := n.findNode(addr)
 		if err != nil {
 			n.logger.Errorf("failed to find node for %s : %v", hex.EncodeToString(addr[:]), err)
 			continue
@@ -280,11 +329,11 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 
 		// call StoreItem request on closest nodes
 		var wg = sync.WaitGroup{}
-		for _, ni := range rep.NodeInfos.Infos {
+		for _, ni := range rep {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
+				conn, err := grpc.Dial(ni.nAddr, grpc.WithInsecure())
 				defer conn.Close()
 				if err != nil {
 					n.logger.Errorf("did not connect: %v", err)

@@ -34,7 +34,7 @@ service Doogle {
     rpc FindIndex(FindIndexRequest) returns(FindIndexReply);
 
     // return k closed nodes to given address
-    rpc FindNode(FindNodeRequest) returns(FindNodeReply);
+    rpc FindNode(FindNodeRequest) returns(NodeInfos);
 
     // health check
     rpc PingWithCertificate (NodeCertificate) returns (StringMessage);
@@ -80,11 +80,6 @@ message FindIndexReply {
 message FindNodeRequest {
     NodeCertificate certificate = 1;
     bytes doogleAddress = 2;
-}
-
-message FindNodeReply {
-    NodeCertificate certificate = 1;
-    NodeInfos nodeInfos = 2;
 }
 
 message GetIndexReply {
