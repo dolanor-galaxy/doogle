@@ -66,14 +66,13 @@ message Items {
 
 message FindIndexRequest {
     NodeCertificate certificate = 1;
-    bytes doogleAddress = 2;
+    string doogleAddress = 2;
 }
 
 message FindIndexReply {
-    NodeCertificate certificate = 1;
     oneof result {
-        NodeInfos nodeInfos = 2;
-        Items items = 3;
+        NodeInfos nodeInfos = 1;
+        Items items = 2;
     }
 }
 

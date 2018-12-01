@@ -778,4 +778,6 @@ func TestNode_PostUrl(t *testing.T) {
 
 func TestNode_GetIndex(t *testing.T) {}
 
-func TestNode_FindIndex(t *testing.T) {}
+func TestNode_FindIndex(t *testing.T) {
+
+}

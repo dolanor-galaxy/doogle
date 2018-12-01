@@ -366,7 +366,50 @@ func (n *Node) findNearestNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, er
 }
 
 func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doogle.FindIndexReply, error) {
-	return nil, nil
+	if !n.isValidSender(in.Certificate) {
+		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
+	}
+
+	var rep = &doogle.FindIndexReply{}
+
+	raw, ok := n.dht.Load(in.DoogleAddress)
+	if !ok {
+		var res *doogle.FindIndexReply_NodeInfos
+		var err error
+
+		res.NodeInfos, err = n.FindNode(ctx, &doogle.FindNodeRequest{
+			Certificate:   in.Certificate,
+			DoogleAddress: []byte(in.DoogleAddress),
+		})
+
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "FindNode failed: %v", err)
+		}
+		rep.Result = res
+		return rep, nil
+	}
+
+	dhtV, ok := raw.(*dhtValue)
+	if !ok {
+		return nil, status.Error(codes.Internal, "failed to convert to *dhtValue")
+	}
+
+	as := dhtV.itemAddresses // copy slice
+	var res *doogle.FindIndexReply_Items
+	items := make([]*doogle.Item, 0)
+	for _, addr := range as {
+		if raw, ok := n.items.Load(addr); ok {
+			if it, ok := raw.(*item); ok {
+				items = append(items, &doogle.Item{
+					Url:       it.url,
+					LocalRank: it.localRank,
+				})
+			}
+		}
+	}
+	res.Items.Items = items
+	rep.Result = res
+	return rep, nil
 }
 
 func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.GetIndexReply, error) {
