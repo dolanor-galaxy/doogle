@@ -34,7 +34,7 @@ type item struct {
 	// outgoing hyperlinks
 	edges []doogleAddress
 
-	// localRank represents computed locally PageRank
+	// localRank represents locally computed PageRank
 	localRank float64
 }
 
@@ -370,17 +370,21 @@ func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doo
 		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
 	}
 
-	var rep = &doogle.FindIndexReply{}
+	return n.findIndex(ctx, doogleAddressStr(in.DoogleAddress))
+}
 
-	raw, ok := n.dht.Load(in.DoogleAddress)
+func (n *Node) findIndex(ctx context.Context, dAddrStr doogleAddressStr) (*doogle.FindIndexReply, error) {
+	var rep = &doogle.FindIndexReply{}
+	raw, ok := n.dht.Load(dAddrStr)
 	if !ok {
-		var res *doogle.FindIndexReply_NodeInfos
+		res := &doogle.FindIndexReply_NodeInfos{
+			NodeInfos: &doogle.NodeInfos{},
+		}
 		var err error
 
-		res.NodeInfos, err = n.FindNode(ctx, &doogle.FindNodeRequest{
-			Certificate:   in.Certificate,
-			DoogleAddress: []byte(in.DoogleAddress),
-		})
+		var dAddr doogleAddress
+		copy(dAddr[:], dAddrStr)
+		res.NodeInfos.Infos, err = n.findNode(dAddr)
 
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "FindNode failed: %v", err)
@@ -395,19 +399,22 @@ func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doo
 	}
 
 	as := dhtV.itemAddresses // copy slice
-	var res *doogle.FindIndexReply_Items
-	items := make([]*doogle.Item, 0)
+	res := &doogle.FindIndexReply_Items{
+		Items: &doogle.Items{
+			Items: make([]*doogle.Item, 0),
+		},
+	}
+
 	for _, addr := range as {
 		if raw, ok := n.items.Load(addr); ok {
 			if it, ok := raw.(*item); ok {
-				items = append(items, &doogle.Item{
+				res.Items.Items = append(res.Items.Items, &doogle.Item{
 					Url:       it.url,
 					LocalRank: it.localRank,
 				})
 			}
 		}
 	}
-	res.Items.Items = items
 	rep.Result = res
 	return rep, nil
 }
