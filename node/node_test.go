@@ -12,39 +12,52 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mathetake/doogle/crawler"
 	"github.com/mathetake/doogle/grpc"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gotest.tools/assert"
 )
 
-var zeroAddress = doogleAddress{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+var (
+	zeroAddress = doogleAddress{
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	}
+	zeroInfo    = &nodeInfo{zeroAddress, "", 0}
+	testServers = []*struct {
+		port       string
+		difficulty int
+		node       *Node
+	}{
+		{difficulty: 1},
+		{difficulty: 1},
+		{difficulty: 1},
+		{difficulty: 1},
+		{difficulty: 1},
+		{difficulty: 1},
+	}
+)
+
+type mockCrawler struct {
+	title, description string
+	tokens, edgeURLs   []string
 }
 
-var zeroInfo = &nodeInfo{zeroAddress, "", 0}
+func (c *mockCrawler) AnalyzeURL(url string) (title, description string, tokens, edgeURLs []string, err error) {
+	return c.title, c.description, c.tokens, c.edgeURLs, nil
+}
+
+var _ crawler.Crawler = &mockCrawler{}
 
 const (
 	localhost = "127.0.0.1"
 )
 
-var testServers = []*struct {
-	port       string
-	difficulty int
-	node       *Node
-}{
-	{difficulty: 1},
-	{difficulty: 1},
-	{difficulty: 1},
-	{difficulty: 1},
-	{difficulty: 1},
-	{difficulty: 1},
-}
-
 func TestMain(m *testing.M) {
 	logger := logrus.New()
 	logger.SetLevel(1)
+
 	for _, ts := range testServers {
 		ts.node, ts.port = runServer(ts.difficulty, logger)
 	}
@@ -662,7 +675,7 @@ func TestNode_FindNode(t *testing.T) {
 		},
 	} {
 		c := cc
-		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+		_ = t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			var dAddr doogleAddress
 			copy(dAddr[:], c.targetAddr)
 			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
@@ -680,6 +693,89 @@ func TestNode_FindNode(t *testing.T) {
 	}
 }
 
-func TestNode_PostUrl(t *testing.T) {}
+func TestNode_PostUrl(t *testing.T) {
+	resetRoutingTable()
+	defer resetRoutingTable()
+	resetDHT()
+	defer resetDHT()
+
+	srv := testServers[0].node
+	for i, cc := range []struct {
+		url string
+		cr  *mockCrawler
+	}{
+		{
+			url: "url1",
+			cr: &mockCrawler{
+				title:       "title1",
+				description: "description",
+				edgeURLs:    []string{},
+				tokens:      []string{string([]byte{1}), string([]byte{2})},
+			},
+		},
+		{
+			url: "url1",
+			cr: &mockCrawler{
+				title:       "title1",
+				description: "description",
+				edgeURLs:    []string{"foo.com", "bar.com"},
+				tokens:      []string{"token1", "token2"},
+			},
+		},
+	} {
+		c := cc
+		_ = t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			srv.crawler = c.cr
+			_, err := srv.PostUrl(
+				context.Background(),
+				&doogle.StringMessage{Message: c.url},
+			)
+			assert.Equal(t, nil, err)
+
+			for _, token := range c.cr.tokens {
+				h := sha1.Sum([]byte(c.url))
+				itemAddrStr := doogleAddressStr(h[:])
+
+				h = sha1.Sum([]byte(token))
+				tokenAddrStr := doogleAddressStr(h[:])
+				raw, ok := srv.dht.Load(tokenAddrStr)
+				assert.Equal(t, true, ok)
+
+				dhtV, ok := raw.(*dhtValue)
+				assert.Equal(t, true, ok)
+
+				dhtV.mux.Lock()
+				var isIncluded = false
+				var ia doogleAddressStr
+				for _, addr := range dhtV.itemAddresses {
+					if addr == itemAddrStr {
+						isIncluded = true
+						ia = addr
+					}
+				}
+				assert.Equal(t, true, isIncluded)
+
+				raw, ok = srv.items.Load(ia)
+				assert.Equal(t, true, ok)
+
+				it, ok := raw.(*item)
+				assert.Equal(t, true, ok)
+				assert.Equal(t, c.cr.title, it.title)
+				assert.Equal(t, c.cr.description, it.description)
+				assert.Equal(t, len(c.cr.edgeURLs), len(it.edges))
+
+				for i, eu := range c.cr.edgeURLs {
+					h = sha1.Sum([]byte(eu))
+					expAddr := doogleAddress(h)
+					assert.Equal(t, expAddr, it.edges[i])
+				}
+
+				dhtV.mux.Unlock()
+			}
+		})
+	}
+}
 
 func TestNode_GetIndex(t *testing.T) {}
+
+func TestNode_FindIndex(t *testing.T) {}

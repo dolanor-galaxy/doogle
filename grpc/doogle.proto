@@ -51,7 +51,7 @@ message StoreItemRequest {
     string url = 2;
     string title = 3;
     string description = 4;
-    repeated bytes edges = 5;
+    repeated string edgeURLs = 5;
     string index = 6;
 }
 

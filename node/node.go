@@ -19,9 +19,8 @@ import (
 )
 
 const (
-	alpha      = 3
-	bucketSize = 20
-
+	alpha                  = 3
+	bucketSize             = 20
 	maxIterationOnFindNode = 10e4
 )
 
@@ -177,9 +176,9 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
 	}
 
-	es := make([]doogleAddress, len(in.Edges))
-	for i, e := range in.Edges {
-		es[i] = sha1.Sum(e)
+	es := make([]doogleAddress, len(in.EdgeURLs))
+	for i, e := range in.EdgeURLs {
+		es[i] = sha1.Sum([]byte(e))
 	}
 
 	// calc item's address
@@ -232,10 +231,6 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 	return nil, nil
 }
 
-func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doogle.FindIndexReply, error) {
-	return nil, nil
-}
-
 func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.NodeInfos, error) {
 	if !n.isValidSender(in.Certificate) {
 		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
@@ -265,7 +260,6 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	var prevNum = len(ret)
 
 	for i := 0; i < maxIterationOnFindNode; i++ {
-		fmt.Println(i, "-th iter")
 		for _, r := range ret {
 			// ask nearest nodes for nodeInfo nearest to targetAddress
 			conn, err := grpc.Dial(r.NetworkAddress, grpc.WithInsecure())
@@ -371,6 +365,10 @@ func (n *Node) findNearestNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, er
 	return ret, nil
 }
 
+func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doogle.FindIndexReply, error) {
+	return nil, nil
+}
+
 func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.GetIndexReply, error) {
 	return nil, nil
 }
@@ -382,25 +380,18 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 		return nil, status.Errorf(codes.Internal, "failed to analyze to url: %v", err)
 	}
 
-	// prepare StoreItemRequest
-	edges := make([][]byte, len(eURLs))
-	for i, u := range eURLs {
-		addr := sha1.Sum([]byte(u))
-		edges[i] = addr[:]
-	}
-
 	di := &doogle.StoreItemRequest{
 		Url:         in.Message,
 		Title:       title,
 		Description: desc,
-		Edges:       edges,
+		EdgeURLs:    eURLs,
 		Certificate: n.certificate,
 	}
 
 	// make StoreItem requests to store the url into DHT
 	for _, token := range tokens {
 		addr := sha1.Sum([]byte(token))
-		di.Index = string(addr[:])
+		di.Index = token
 
 		rep, err := n.findNearestNode(addr)
 		if err != nil {
@@ -408,27 +399,35 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 			continue
 		}
 
-		// call StoreItem request on closest nodes
-		var wg = sync.WaitGroup{}
-		for _, ni := range rep {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
-				defer conn.Close()
-				if err != nil {
-					n.logger.Errorf("did not connect: %v", err)
-					return
-				}
-				c := doogle.NewDoogleClient(conn)
-				_, err = c.StoreItem(context.Background(), di)
-				if err != nil {
-					n.logger.Errorf("failed to call StoreItem: %v", err)
-					return
-				}
-			}()
+		// if the reply is empty, Store item into its own table
+		if len(rep) == 0 {
+			_, err = n.StoreItem(context.Background(), di)
+			if err != nil {
+				n.logger.Errorf("failed to call StoreItem: %v", err)
+			}
+		} else {
+			// call StoreItem request on closest nodes
+			var wg = sync.WaitGroup{}
+			for _, ni := range rep {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
+					defer conn.Close()
+					if err != nil {
+						n.logger.Errorf("did not connect: %v", err)
+						return
+					}
+					c := doogle.NewDoogleClient(conn)
+					_, err = c.StoreItem(context.Background(), di)
+					if err != nil {
+						n.logger.Errorf("failed to call StoreItem: %v", err)
+						return
+					}
+				}()
+			}
+			wg.Wait()
 		}
-		wg.Wait()
 	}
 	return nil, nil
 }
