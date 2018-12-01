@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mathetake/doogle/grpc"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gotest.tools/assert"
 )
@@ -42,21 +43,23 @@ var testServers = []*struct {
 }
 
 func TestMain(m *testing.M) {
+	logger := logrus.New()
+	logger.SetLevel(1)
 	for _, ts := range testServers {
-		ts.node, ts.port = runServer(ts.difficulty)
+		ts.node, ts.port = runServer(ts.difficulty, logger)
 	}
 	os.Exit(m.Run())
 }
 
 // set up doogle server on specified port
-func runServer(difficulty int) (*Node, string) {
+func runServer(difficulty int, logger *logrus.Logger) (*Node, string) {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	port := ":" + strings.Split(lis.Addr().String(), ":")[1]
-	node, err := NewNode(difficulty, localhost+port, nil, nil)
+	node, err := NewNode(difficulty, localhost+port, logger, nil)
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
 	}
@@ -359,7 +362,7 @@ func TestNode_StoreItem(t *testing.T) {
 	target := testServers[1]
 	from := testServers[0]
 
-	for i, _req := range []*doogle.StoreItemRequest{
+	for i, cc := range []*doogle.StoreItemRequest{
 		{
 			Certificate: from.node.certificate,
 			Index:       string([]byte{1}),
@@ -403,31 +406,31 @@ func TestNode_StoreItem(t *testing.T) {
 			Description: "description1",
 		},
 	} {
-		req := _req
+		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			_, err := target.node.StoreItem(context.Background(), req)
+			_, err := target.node.StoreItem(context.Background(), c)
 			assert.Equal(t, nil, err)
 
 			// calc item's address
-			h := sha1.Sum([]byte(req.Url))
+			h := sha1.Sum([]byte(c.Url))
 			itemAddr := doogleAddressStr(h[:])
 
 			// calc index's address
-			h = sha1.Sum([]byte(req.Index))
+			h = sha1.Sum([]byte(c.Index))
 			idxAddr := doogleAddressStr(h[:])
 
 			// get dhtValue
-			_dht, ok := target.node.dht.Load(idxAddr)
+			raw, ok := target.node.dht.Load(idxAddr)
 			assert.Equal(t, true, ok)
-			_, ok = _dht.(*dhtValue)
+			_, ok = raw.(*dhtValue)
 			assert.Equal(t, true, ok)
 
 			// check itemsMap
-			_it, ok := target.node.items.Load(itemAddr)
+			raw, ok = target.node.items.Load(itemAddr)
 			assert.Equal(t, true, ok)
-			it, ok := _it.(*item)
+			it, ok := raw.(*item)
 			assert.Equal(t, true, ok)
-			assert.Equal(t, req.Title, it.title)
+			assert.Equal(t, c.Title, it.title)
 		})
 	}
 
@@ -445,30 +448,21 @@ func TestNode_StoreItem(t *testing.T) {
 			h := sha1.Sum([]byte(c.idx))
 			idxAddr := doogleAddressStr(h[:])
 
-			_dhtV, ok := target.node.dht.Load(idxAddr)
+			raw, ok := target.node.dht.Load(idxAddr)
 			assert.Equal(t, true, ok)
 
-			dhtV, ok := _dhtV.(*dhtValue)
+			dhtV, ok := raw.(*dhtValue)
 			assert.Equal(t, true, ok)
 			assert.Equal(t, c.expLen, len(dhtV.itemAddresses))
 		})
 	}
 }
 
-func TestNode_FindNode(t *testing.T) {
+func TestNode_FindNearestNode(t *testing.T) {
 	resetRoutingTable()
 	defer resetRoutingTable()
-	var wg sync.WaitGroup
 
-	cert := &doogle.NodeCertificate{
-		DoogleAddress:  zeroAddress[:],
-		Difficulty:     1,
-		NetworkAddress: "",
-		Nonce:          []byte{0},
-		PublicKey:      []byte{0},
-	}
 	srv := testServers[1].node
-
 	for i, cc := range []struct {
 		targetAddr []byte
 		before     []*nodeInfo
@@ -557,26 +551,135 @@ func TestNode_FindNode(t *testing.T) {
 		},
 	} {
 		c := cc
-		wg.Add(1)
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			defer wg.Done()
 			var dAddr doogleAddress
 			copy(dAddr[:], c.targetAddr)
 			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
 
 			srv.routingTable[msb].bucket = c.before
-			ret, err := srv.FindNode(context.Background(), &doogle.FindNodeRequest{
-				Certificate:   cert,
-				DoogleAddress: c.targetAddr,
-			})
+			ret, err := srv.findNearestNode(dAddr)
 
 			assert.Equal(t, nil, err)
-			assert.Equal(t, len(c.expected), len(ret.Infos))
+			assert.Equal(t, len(c.expected), len(ret))
 
-			for i, actual := range ret.Infos {
+			for i, actual := range ret {
 				assert.Equal(t, c.expected[i], actual.NetworkAddress)
 			}
 		})
-		wg.Wait()
 	}
 }
+
+func TestNode_FindNode(t *testing.T) {
+	resetRoutingTable()
+	defer resetRoutingTable()
+
+	srv := testServers[1].node
+	for i, cc := range []struct {
+		targetAddr []byte
+		before     []*nodeInfo
+		expected   []string
+	}{
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+			},
+			expected: []string{string([]byte{2}), string([]byte{3}), string([]byte{4})},
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected: []string{string([]byte{3}), string([]byte{4}), string([]byte{2})},
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected: []string{string([]byte{2}), string([]byte{3})},
+		},
+		{
+			targetAddr: []byte{1},
+			before:     []*nodeInfo{},
+			expected:   []string{},
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+				},
+				{
+					nAddr: string([]byte{5}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{6}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected: []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
+		},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			var dAddr doogleAddress
+			copy(dAddr[:], c.targetAddr)
+			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
+
+			srv.routingTable[msb].bucket = c.before
+			ret, err := srv.findNode(dAddr)
+
+			assert.Equal(t, nil, err)
+			assert.Equal(t, len(c.expected), len(ret))
+
+			for i, actual := range ret {
+				assert.Equal(t, c.expected[i], actual.NetworkAddress)
+			}
+		})
+	}
+}
+
+func TestNode_PostUrl(t *testing.T) {}
+
+func TestNode_GetIndex(t *testing.T) {}

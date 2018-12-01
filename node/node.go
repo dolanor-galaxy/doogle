@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"sort"
 	"sync"
@@ -23,7 +22,7 @@ const (
 	alpha      = 3
 	bucketSize = 20
 
-	maxIterOnFindNode = 10e6
+	maxIterationOnFindNode = 10e4
 )
 
 type item struct {
@@ -71,6 +70,8 @@ type Node struct {
 	// crawler
 	crawler crawler.Crawler
 }
+
+var _ doogle.DoogleServer = &Node{}
 
 // nodeInfo contains the information for connecting nodes
 type nodeInfo struct {
@@ -222,8 +223,8 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		dhtV.itemAddresses = append(dhtV.itemAddresses, it.dAddrStr)
 	}
 
-	if _prev, loaded := n.items.LoadOrStore(it.dAddrStr, it); loaded {
-		prev := _prev.(*item)
+	if raw, loaded := n.items.LoadOrStore(it.dAddrStr, it); loaded {
+		prev := raw.(*item)
 		it.localRank = prev.localRank
 		n.items.Store(it.dAddrStr, it)
 	}
@@ -236,12 +237,97 @@ func (n *Node) FindIndex(ctx context.Context, in *doogle.FindIndexRequest) (*doo
 }
 
 func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.NodeInfos, error) {
-	// verify the certificate, and if it is valid, update the routing table
-	n.isValidSender(in.Certificate)
+	if !n.isValidSender(in.Certificate) {
+		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
+	}
 
 	var targetAddr doogleAddress
 	copy(targetAddr[:], in.DoogleAddress[:])
 
+	ret, err := n.findNode(targetAddr)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "findNode failed: %v", err)
+	}
+	return &doogle.NodeInfos{Infos: ret}, nil
+}
+
+func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
+
+	ret, err := n.findNearestNode(targetAddr)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
+	}
+
+	prevMap := map[string]struct{}{}
+	for _, r := range ret {
+		prevMap[r.NetworkAddress] = struct{}{}
+	}
+	var prevNum = len(ret)
+
+	for i := 0; i < maxIterationOnFindNode; i++ {
+		fmt.Println(i, "-th iter")
+		for _, r := range ret {
+			// ask nearest nodes for nodeInfo nearest to targetAddress
+			conn, err := grpc.Dial(r.NetworkAddress, grpc.WithInsecure())
+			if err != nil {
+				n.logger.Errorf("did not connect: %v", err)
+				continue
+			}
+
+			c := doogle.NewDoogleClient(conn)
+			rep, err := c.FindNode(context.Background(), &doogle.FindNodeRequest{
+				Certificate:   n.certificate,
+				DoogleAddress: targetAddr[:],
+			})
+
+			if err != nil {
+				n.logger.Errorf("failed to call FindNode: %v", err)
+				continue
+			}
+			conn.Close()
+
+			// update routing table
+			for _, r := range rep.Infos {
+				var dAddr doogleAddress
+				copy(dAddr[:], r.DoogleAddress)
+				n.updateRoutingTable(&nodeInfo{
+					dAddr: dAddr,
+					nAddr: r.NetworkAddress,
+				})
+			}
+		}
+
+		// get nearest nodes from its routing table
+		ret, err = n.findNearestNode(targetAddr)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
+		}
+
+		// check duplication
+		var cnt int
+		for _, r := range ret {
+			if _, ok := prevMap[r.NetworkAddress]; ok {
+				cnt++
+			}
+		}
+
+		// if anything hasn't changed, break and return
+		if cnt == prevNum {
+			break
+		}
+
+		// reset prevMap/prevNum for next loop
+		prevMap = map[string]struct{}{}
+		for _, r := range ret {
+			prevMap[r.NetworkAddress] = struct{}{}
+		}
+		prevNum = len(ret)
+	}
+
+	return ret, nil
+}
+
+func (n *Node) findNearestNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	msb := getMostSignificantBit(n.DAddr.xor(targetAddr))
 	if msb < 0 {
 		return nil, status.Error(codes.Internal, "collision occurred")
@@ -265,7 +351,7 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 		}
 
 		// TODO: handle the case where len(rb.bucket) == 0
-		return &doogle.NodeInfos{Infos: ret}, nil
+		return ret, nil
 	}
 
 	ns := make([]*nodeInfo, len(rb.bucket))
@@ -282,55 +368,7 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 			DoogleAddress:  ns[i].dAddr[:],
 		}
 	}
-
-	return &doogle.NodeInfos{Infos: ret}, nil
-}
-
-func (n *Node) findNode(addr doogleAddress) ([]*nodeInfo, error) {
-	prev := make(map[string]struct{}, alpha)
-	ret := make([]*nodeInfo, alpha)
-
-	for i := 0; i < maxIterOnFindNode; i++ {
-		res, err := n.FindNode(context.Background(), &doogle.FindNodeRequest{
-			Certificate:   n.certificate,
-			DoogleAddress: addr[:],
-		})
-
-		if err != nil {
-			n.logger.Errorf("failed to FindNode: %v", err)
-			continue
-		}
-
-		// count of duplication
-		var cnt int
-
-		for _, ni := range res.Infos {
-			var dAddr doogleAddress
-			copy(dAddr[:], ni.DoogleAddress)
-
-			ret[i] = &nodeInfo{
-				nAddr: ni.NetworkAddress,
-				dAddr: dAddr,
-			}
-
-			if _, ok := prev[ni.NetworkAddress]; ok {
-				cnt++
-			} else {
-				n.updateRoutingTable(ret[i])
-			}
-		}
-
-		if cnt == alpha {
-			break
-		} else {
-			prev = map[string]struct{}{}
-			for _, r := range ret {
-				prev[r.nAddr] = struct{}{}
-			}
-		}
-	}
-
-	return nil, nil
+	return ret, nil
 }
 
 func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.GetIndexReply, error) {
@@ -364,9 +402,9 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 		addr := sha1.Sum([]byte(token))
 		di.Index = string(addr[:])
 
-		rep, err := n.findNode(addr)
+		rep, err := n.findNearestNode(addr)
 		if err != nil {
-			n.logger.Errorf("failed to find node for %s : %v", hex.EncodeToString(addr[:]), err)
+			n.logger.Errorf("failed to find node for %s : %v", token, err)
 			continue
 		}
 
@@ -376,7 +414,7 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				conn, err := grpc.Dial(ni.nAddr, grpc.WithInsecure())
+				conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
 				defer conn.Close()
 				if err != nil {
 					n.logger.Errorf("did not connect: %v", err)
@@ -461,5 +499,3 @@ func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Cra
 	// TODO: start PageRank computing scheduler
 	return &node, nil
 }
-
-var _ doogle.DoogleServer = &Node{}
