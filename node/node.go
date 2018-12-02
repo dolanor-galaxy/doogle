@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	alpha                  = 3
-	bucketSize             = 20
-	maxIterationOnFindNode = 10e4
+	alpha         = 3
+	bucketSize    = 20
+	maxIteration  = 1e3
+	maxNumGetItem = 20 // TODO: add paging option
 )
 
 type item struct {
@@ -259,7 +260,7 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	}
 	var prevNum = len(ret)
 
-	for i := 0; i < maxIterationOnFindNode; i++ {
+	for i := 0; i < maxIteration; i++ {
 		for _, r := range ret {
 			// ask nearest nodes for nodeInfo nearest to targetAddress
 			conn, err := grpc.Dial(r.NetworkAddress, grpc.WithInsecure())
@@ -285,8 +286,9 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 				var dAddr doogleAddress
 				copy(dAddr[:], r.DoogleAddress)
 				n.updateRoutingTable(&nodeInfo{
-					dAddr: dAddr,
-					nAddr: r.NetworkAddress,
+					dAddr:      dAddr,
+					nAddr:      r.NetworkAddress,
+					accessedAt: time.Now().UTC().Unix(),
 				})
 			}
 		}
@@ -420,7 +422,109 @@ func (n *Node) findIndex(ctx context.Context, dAddrStr doogleAddressStr) (*doogl
 }
 
 func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.GetIndexReply, error) {
-	return nil, nil
+
+	// TODO: deal with complex queries, like AND, OR, etc.
+
+	var targetAddr = doogleAddressStr(in.Message)
+	res, err := n.findIndex(ctx, targetAddr)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "findIndex failed: %v", err)
+	}
+
+	ret := make([]*doogle.Item, 0, maxNumGetItem)
+	scoreMap := map[string]*struct {
+		num int
+		sum float64
+		avg float64
+	}{}
+
+	nas := make([]string, 0, alpha)
+	if its, ok := res.Result.(*doogle.FindIndexReply_Items); ok {
+		for _, it := range its.Items.Items {
+			if v, ok := scoreMap[it.Url]; ok {
+				v.num++
+				v.sum += it.LocalRank
+			} else {
+				scoreMap[it.Url] = &struct {
+					num int
+					sum float64
+					avg float64
+				}{num: 1, sum: it.LocalRank}
+				ret = append(ret, it)
+			}
+		}
+
+		// get nearest nodes
+		var dAddr doogleAddress
+		copy(dAddr[:], targetAddr)
+		res, err := n.findNode(dAddr)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "findNode failed: %v", err)
+		}
+		for _, r := range res {
+			nas = append(nas, r.NetworkAddress)
+		}
+
+	} else {
+		for _, ni := range res.Result.(*doogle.FindIndexReply_NodeInfos).NodeInfos.Infos {
+			nas = append(nas, ni.NetworkAddress)
+		}
+	}
+
+	var mux sync.Mutex
+	var wg sync.WaitGroup
+	for _, nAddr := range nas {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			conn, err := grpc.Dial(nAddr, grpc.WithInsecure())
+			defer conn.Close()
+			if err != nil {
+				n.logger.Errorf("did not connect: %v", err)
+				return
+			}
+
+			c := doogle.NewDoogleClient(conn)
+			res, err = c.FindIndex(context.Background(), &doogle.FindIndexRequest{
+				Certificate:   n.certificate,
+				DoogleAddress: string(targetAddr),
+			})
+			if err != nil {
+				n.logger.Errorf("failed to call FindIndex: %v", err)
+				return
+			}
+
+			if its, ok := res.Result.(*doogle.FindIndexReply_Items); ok {
+				for _, it := range its.Items.Items {
+					mux.Lock()
+					if v, ok := scoreMap[it.Url]; ok {
+						v.num++
+						v.sum += it.LocalRank
+					} else {
+						scoreMap[it.Url] = &struct {
+							num int
+							sum float64
+							avg float64
+						}{num: 1, sum: it.LocalRank}
+						ret = append(ret, it)
+					}
+					mux.Unlock()
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// sort by average score
+	for _, v := range scoreMap {
+		v.avg = v.sum / float64(v.num)
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return scoreMap[ret[i].Url].avg > scoreMap[ret[j].Url].avg
+	})
+	return &doogle.GetIndexReply{Items: ret}, nil
 }
 
 func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.Empty, error) {

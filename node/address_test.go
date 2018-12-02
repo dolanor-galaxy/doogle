@@ -77,7 +77,7 @@ func TestVerifyAddress(t *testing.T) {
 }
 
 func TestGetNonce(t *testing.T) {
-	for i := 0; i < 10e3; i++ {
+	for i := 0; i < 1e3; i++ {
 		_, err := getNonce()
 		assert.Equal(t, nil, err)
 	}

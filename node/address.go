@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	addressLength = 20
-	addressBits   = 160
-	nonceLength   = 10
-	maxIteration  = 10e8
+	addressLength        = 20
+	addressBits          = 160
+	nonceLength          = 10
+	maxIterationOnPuzzle = 1e8
 )
 
 // address for indices and nodes
@@ -26,7 +26,7 @@ func newNodeAddress(nAddr string, pk []byte, difficulty int) (doogleAddress, []b
 	var err error
 	var nonce []byte
 	var isValid = false
-	for i := 0; i < maxIteration; i++ {
+	for i := 0; i < maxIterationOnPuzzle; i++ {
 		nonce, err = getNonce()
 		if err != nil {
 			continue
