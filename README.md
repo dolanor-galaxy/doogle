@@ -6,7 +6,10 @@ _Web search of the people, by the people, for the people with Go._
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 
-doogle is a Proof of Concept of __decentralized search engine__ based on gRPC written in Go.
+doogle is a Proof of Concept software of __decentralized search engine__ based on gRPC written in Go.
+
+This is just a PoC, and so I am not serious about making doogle secure, scalable, usable in production etc.
+
 
 ## algorithms behind doogle
 
@@ -96,6 +99,10 @@ see my survey: [Towards decentralized information retrieval: research papers](ht
 Also there are two articles in __Japanese__:
 - [Distributed Hash Table and p2p Search Engine](https://scrapbox.io/layerx/Distributed_Hash_Table_and_p2p_Search_Engine)
 - [Peer-to-Peer Information Retrieval: An Overview](https://scrapbox.io/layerx/%5BWIP%5DPeer-to-Peer_Information_Retrieval:_An_Overview)
+
+## Author
+
+[@mathetake](https://twitter.com/mathetake)
 
 ## LICENSE
 

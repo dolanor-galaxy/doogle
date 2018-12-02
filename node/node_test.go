@@ -19,23 +19,20 @@ import (
 	"gotest.tools/assert"
 )
 
+const (
+	localhost = "127.0.0.1"
+	numServer = 10
+)
+
 var (
 	zeroAddress = doogleAddress{
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	}
 	zeroInfo    = &nodeInfo{zeroAddress, "", 0}
-	testServers = []*struct {
-		port       string
-		difficulty int
-		node       *Node
-	}{
-		{difficulty: 1},
-		{difficulty: 1},
-		{difficulty: 1},
-		{difficulty: 1},
-		{difficulty: 1},
-		{difficulty: 1},
+	testServers []*struct {
+		port string
+		node *Node
 	}
 )
 
@@ -50,16 +47,17 @@ func (c *mockCrawler) AnalyzeURL(url string) (title, description string, tokens,
 
 var _ crawler.Crawler = &mockCrawler{}
 
-const (
-	localhost = "127.0.0.1"
-)
-
 func TestMain(m *testing.M) {
 	logger := logrus.New()
 	logger.SetLevel(1)
 
-	for _, ts := range testServers {
-		ts.node, ts.port = runServer(ts.difficulty, logger)
+	for i := 0; i < numServer; i++ {
+		srv := &struct {
+			port string
+			node *Node
+		}{}
+		srv.node, srv.port = runServer(1, logger)
+		testServers = append(testServers, srv)
 	}
 	os.Exit(m.Run())
 }
@@ -953,5 +951,69 @@ func TestNode_findIndex_Found(t *testing.T) {
 }
 
 func TestNode_GetIndex(t *testing.T) {
+	resetRoutingTable()
+	defer resetRoutingTable()
+	resetDHT()
+	defer resetDHT()
 
+	srv := testServers[0].node
+
+	for i, cc := range []struct {
+		dAddrStr doogleAddressStr
+		items    []*item
+		expected []string
+	}{
+		{
+			dAddrStr: doogleAddressStr(string([]byte{0, 0, 1})),
+			items: []*item{
+				{url: "url1", dAddrStr: "address1", localRank: 0.3},
+				{url: "url2", dAddrStr: "address2", localRank: 0.2},
+				{url: "url3", dAddrStr: "address3", localRank: 0.1},
+			},
+			expected: []string{"url1", "url2", "url3"},
+		},
+		{
+			dAddrStr: doogleAddressStr(string([]byte{0, 1, 0})),
+			items: []*item{
+				{url: "url1", dAddrStr: "address1", localRank: 0.1},
+				{url: "url2", dAddrStr: "address2", localRank: 0.2},
+				{url: "url3", dAddrStr: "address3", localRank: 0.5},
+				{url: "url4", dAddrStr: "address4", localRank: 0.01},
+			},
+			expected: []string{"url3", "url2", "url1", "url4"},
+		},
+		{
+			dAddrStr: doogleAddressStr(string([]byte{1, 1, 0})),
+			items:    []*item{},
+			expected: []string{},
+		},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			dhtV := &dhtValue{
+				mux:           sync.Mutex{},
+				itemAddresses: []doogleAddressStr{},
+			}
+
+			for _, it := range c.items {
+				dhtV.itemAddresses = append(dhtV.itemAddresses, it.dAddrStr)
+				srv.items.Store(it.dAddrStr, it)
+			}
+
+			srv.dht.Store(c.dAddrStr, dhtV)
+
+			res, err := srv.GetIndex(
+				context.Background(),
+				&doogle.StringMessage{
+					Message: string(c.dAddrStr),
+				})
+
+			assert.Equal(t, nil, err)
+			assert.Equal(t, len(c.expected), len(res.Items))
+
+			for i, ai := range res.Items {
+				assert.Equal(t, c.expected[i], ai.Url)
+			}
+		})
+	}
 }

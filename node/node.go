@@ -107,6 +107,10 @@ type dhtValue struct {
 }
 
 func (n *Node) isValidSender(ct *doogle.NodeCertificate) bool {
+	if n.certificate == ct {
+		// if isValidSender is called by itself, return true
+		return true
+	}
 
 	// refuse the one with the given difficulty less than its difficulty
 	if len(ct.DoogleAddress) < addressLength || int(ct.Difficulty) < n.difficulty {
@@ -524,6 +528,7 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 	sort.Slice(ret, func(i, j int) bool {
 		return scoreMap[ret[i].Url].avg > scoreMap[ret[j].Url].avg
 	})
+
 	return &doogle.GetIndexReply{Items: ret}, nil
 }
 
@@ -547,7 +552,7 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 		addr := sha1.Sum([]byte(token))
 		di.Index = token
 
-		rep, err := n.findNearestNode(addr)
+		rep, err := n.findNode(addr)
 		if err != nil {
 			n.logger.Errorf("failed to find node for %s : %v", token, err)
 			continue
