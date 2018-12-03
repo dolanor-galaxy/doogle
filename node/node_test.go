@@ -589,7 +589,7 @@ func TestNode_findNearestNode(t *testing.T) {
 			msb := getMostSignificantBit(srv.DAddr.xor(dAddr)) + c.bitOffset
 
 			srv.routingTable[msb].bucket = c.before
-			ret, err := srv.findNearestNode(dAddr, 0)
+			ret, err := srv.findNearestNode(dAddr, msb, 0)
 
 			assert.Equal(t, nil, err)
 			assert.Equal(t, len(c.expected), len(ret))
