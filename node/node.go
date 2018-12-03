@@ -253,7 +253,7 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 
 func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 
-	ret, err := n.findNearestNode(targetAddr)
+	ret, err := n.findNearestNode(targetAddr, 0)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
 	}
@@ -298,7 +298,7 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 		}
 
 		// get nearest nodes from its routing table
-		ret, err = n.findNearestNode(targetAddr)
+		ret, err = n.findNearestNode(targetAddr, 0)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
 		}
@@ -327,15 +327,34 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	return ret, nil
 }
 
-func (n *Node) findNearestNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
-	msb := getMostSignificantBit(n.DAddr.xor(targetAddr))
+func (n *Node) findNearestNode(targetAddr doogleAddress, bitOffset int) ([]*doogle.NodeInfo, error) {
+	var msb = getMostSignificantBit(n.DAddr.xor(targetAddr))
 	if msb < 0 {
 		return nil, status.Error(codes.Internal, "collision occurred")
 	}
 
-	rb, ok := n.routingTable[msb]
+	rb, ok := n.routingTable[msb+bitOffset]
 	if !ok || rb == nil {
 		panic(fmt.Sprintf("the routing table on %d not exist", msb))
+	}
+
+	if len(rb.bucket) == 0 {
+		mask := bitOffset >> 31
+		offset := (bitOffset ^ mask) - mask
+		if bitOffset > 0 {
+			offset *= -1
+		} else {
+			offset += 1
+		}
+
+		if msb+offset > 159 {
+			offset *= -1
+		}
+
+		if msb+offset < 0 {
+			return nil, nil
+		}
+		return n.findNearestNode(targetAddr, offset)
 	}
 
 	rb.mux.Lock()
@@ -349,8 +368,6 @@ func (n *Node) findNearestNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, er
 				NetworkAddress: rb.bucket[i].nAddr,
 			}
 		}
-
-		// TODO: handle the case where len(rb.bucket) == 0
 		return ret, nil
 	}
 

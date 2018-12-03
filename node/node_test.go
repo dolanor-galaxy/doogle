@@ -470,12 +470,11 @@ func TestNode_StoreItem(t *testing.T) {
 }
 
 func TestNode_findNearestNode(t *testing.T) {
-	resetRoutingTable()
-	defer resetRoutingTable()
-
+	var mux sync.Mutex
 	srv := testServers[1].node
 	for i, cc := range []struct {
 		targetAddr []byte
+		bitOffset  int
 		before     []*nodeInfo
 		expected   []string
 	}{
@@ -520,6 +519,25 @@ func TestNode_findNearestNode(t *testing.T) {
 			before: []*nodeInfo{
 				{
 					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected:  []string{string([]byte{3}), string([]byte{4}), string([]byte{2})},
+			bitOffset: -2,
+		},
+		{
+			targetAddr: []byte{1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
 					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
 				},
 				{
@@ -558,17 +576,20 @@ func TestNode_findNearestNode(t *testing.T) {
 					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
 				},
 			},
-			expected: []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
+			expected:  []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
+			bitOffset: -10,
 		},
 	} {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			mux.Lock()
+			defer mux.Unlock()
 			var dAddr doogleAddress
 			copy(dAddr[:], c.targetAddr)
-			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
+			msb := getMostSignificantBit(srv.DAddr.xor(dAddr)) + c.bitOffset
 
 			srv.routingTable[msb].bucket = c.before
-			ret, err := srv.findNearestNode(dAddr)
+			ret, err := srv.findNearestNode(dAddr, 0)
 
 			assert.Equal(t, nil, err)
 			assert.Equal(t, len(c.expected), len(ret))
@@ -576,6 +597,7 @@ func TestNode_findNearestNode(t *testing.T) {
 			for i, actual := range ret {
 				assert.Equal(t, c.expected[i], actual.NetworkAddress)
 			}
+			resetRoutingTable()
 		})
 	}
 }
