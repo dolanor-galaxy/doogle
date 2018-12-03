@@ -347,13 +347,14 @@ func (n *Node) findNearestNode(targetAddr doogleAddress, msb, bitOffset int) ([]
 			offset += 1
 		}
 
-		if msb+offset > 159 {
+		if msb+offset > 159 || msb+offset < 0 {
 			offset *= -1
 		}
 
-		if msb+offset < 0 {
+		if msb+offset > 159 || msb+offset < 0 {
 			return nil, nil
 		}
+
 		return n.findNearestNode(targetAddr, msb, offset)
 	}
 
