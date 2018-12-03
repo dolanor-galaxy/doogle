@@ -253,6 +253,9 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 
 func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	var msb = getMostSignificantBit(n.DAddr.xor(targetAddr))
+	if msb < 0 {
+		return nil, status.Error(codes.Internal, "collision occurred")
+	}
 	ret, err := n.findNearestNode(targetAddr, msb, 0)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
@@ -299,6 +302,10 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 
 		// get nearest nodes from its routing table
 		var msb = getMostSignificantBit(n.DAddr.xor(targetAddr))
+		if msb < 0 {
+			return nil, status.Error(codes.Internal, "collision occurred")
+		}
+
 		ret, err = n.findNearestNode(targetAddr, msb, 0)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
@@ -328,34 +335,38 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	return ret, nil
 }
 
-func (n *Node) findNearestNode(targetAddr doogleAddress, msb, bitOffset int) ([]*doogle.NodeInfo, error) {
-	if msb < 0 {
-		return nil, status.Error(codes.Internal, "collision occurred")
+func getOffset(offsetID int) (int, error) {
+	if offsetID == 0 {
+		return 0, nil
+	} else if offsetID > 319 {
+		return 0, errors.Errorf("out of range")
 	}
 
-	rb, ok := n.routingTable[msb+bitOffset]
+	var ret = offsetID / 2
+	if offsetID%2 == 0 {
+		ret *= -1
+	} else {
+		ret += 1
+	}
+	return ret, nil
+}
+
+func (n *Node) findNearestNode(targetAddr doogleAddress, msb, offsetID int) ([]*doogle.NodeInfo, error) {
+	offset, err := getOffset(offsetID)
+	fmt.Println("msb: ", msb, "offset: ", offset)
+	if err != nil {
+		return nil, nil
+	} else if msb+offset > 159 || msb+offset < 0 {
+		return n.findNearestNode(targetAddr, msb, offsetID+1)
+	}
+
+	rb, ok := n.routingTable[msb+offset]
 	if !ok || rb == nil {
-		panic(fmt.Sprintf("the routing table on %d not exist", msb))
+		panic(fmt.Sprintf("the routing table on %d not exist", msb+offset))
 	}
 
 	if len(rb.bucket) == 0 {
-		mask := bitOffset >> 31
-		offset := (bitOffset ^ mask) - mask
-		if bitOffset > 0 {
-			offset *= -1
-		} else {
-			offset += 1
-		}
-
-		if msb+offset > 159 || msb+offset < 0 {
-			offset *= -1
-		}
-
-		if msb+offset > 159 || msb+offset < 0 {
-			return nil, nil
-		}
-
-		return n.findNearestNode(targetAddr, msb, offset)
+		return n.findNearestNode(targetAddr, msb, offsetID+1)
 	}
 
 	rb.mux.Lock()

@@ -469,10 +469,30 @@ func TestNode_StoreItem(t *testing.T) {
 	}
 }
 
+func TestGetAdjacentBit(t *testing.T) {
+
+	for i, cc := range []struct {
+		offsetID, expected int
+		isErrorNil         bool
+	}{
+		{offsetID: 0, expected: 0, isErrorNil: true},
+		{offsetID: 2, expected: -1, isErrorNil: true},
+		{offsetID: 3, expected: 2, isErrorNil: true},
+	} {
+		c := cc
+		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
+			actual, err := getOffset(c.offsetID)
+			assert.Equal(t, c.isErrorNil, err == nil)
+			assert.Equal(t, c.expected, actual)
+		})
+	}
+}
+
 func TestNode_findNearestNode(t *testing.T) {
 	var mux sync.Mutex
 	srv := testServers[1].node
 	for i, cc := range []struct {
+		nodeAddr   []byte
 		targetAddr []byte
 		bitOffset  int
 		before     []*nodeInfo
@@ -553,7 +573,8 @@ func TestNode_findNearestNode(t *testing.T) {
 			expected:   []string{},
 		},
 		{
-			targetAddr: []byte{1},
+			nodeAddr:   []byte{255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			targetAddr: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			before: []*nodeInfo{
 				{
 					nAddr: string([]byte{2}),
@@ -579,22 +600,60 @@ func TestNode_findNearestNode(t *testing.T) {
 			expected:  []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
 			bitOffset: -10,
 		},
+		{
+			nodeAddr:   []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			targetAddr: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+			before: []*nodeInfo{
+				{
+					nAddr: string([]byte{2}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+				},
+				{
+					nAddr: string([]byte{3}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
+				},
+				{
+					nAddr: string([]byte{4}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+				},
+				{
+					nAddr: string([]byte{5}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+				},
+				{
+					nAddr: string([]byte{6}),
+					dAddr: doogleAddress{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+				},
+			},
+			expected:  []string{string([]byte{5}), string([]byte{6}), string([]byte{3})},
+			bitOffset: 10,
+		},
 	} {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			mux.Lock()
 			defer mux.Unlock()
+
+			if c.nodeAddr != nil {
+				copy(srv.DAddr[:], c.nodeAddr)
+			}
+
 			var dAddr doogleAddress
 			copy(dAddr[:], c.targetAddr)
-			msb := getMostSignificantBit(srv.DAddr.xor(dAddr)) + c.bitOffset
+			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
 
-			srv.routingTable[msb].bucket = c.before
+			fmt.Println("msb: ", msb, ", offset: ", c.bitOffset)
+
+			srv.routingTable[msb+c.bitOffset].bucket = c.before
 			ret, err := srv.findNearestNode(dAddr, msb, 0)
 
 			assert.Equal(t, nil, err)
 			assert.Equal(t, len(c.expected), len(ret))
 
 			for i, actual := range ret {
+				if c.expected[i] != actual.NetworkAddress {
+					fmt.Println(i, "-th....", "c.expected[i]: ", []byte(c.expected[i]), ", actual.NetworkAddress:", []byte(actual.NetworkAddress))
+				}
 				assert.Equal(t, c.expected[i], actual.NetworkAddress)
 			}
 			resetRoutingTable()
