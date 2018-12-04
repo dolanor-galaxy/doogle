@@ -22,7 +22,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// The request message containing the user's name.
 type Empty struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -54,63 +53,719 @@ func (m *Empty) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Empty proto.InternalMessageInfo
 
-// The response message containing the greetings
-type PingReply struct {
+type StringMessage struct {
 	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *PingReply) Reset()         { *m = PingReply{} }
-func (m *PingReply) String() string { return proto.CompactTextString(m) }
-func (*PingReply) ProtoMessage()    {}
-func (*PingReply) Descriptor() ([]byte, []int) {
+func (m *StringMessage) Reset()         { *m = StringMessage{} }
+func (m *StringMessage) String() string { return proto.CompactTextString(m) }
+func (*StringMessage) ProtoMessage()    {}
+func (*StringMessage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_947ca98c6f36e503, []int{1}
 }
 
-func (m *PingReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PingReply.Unmarshal(m, b)
+func (m *StringMessage) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StringMessage.Unmarshal(m, b)
 }
-func (m *PingReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PingReply.Marshal(b, m, deterministic)
+func (m *StringMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StringMessage.Marshal(b, m, deterministic)
 }
-func (m *PingReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PingReply.Merge(m, src)
+func (m *StringMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StringMessage.Merge(m, src)
 }
-func (m *PingReply) XXX_Size() int {
-	return xxx_messageInfo_PingReply.Size(m)
+func (m *StringMessage) XXX_Size() int {
+	return xxx_messageInfo_StringMessage.Size(m)
 }
-func (m *PingReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_PingReply.DiscardUnknown(m)
+func (m *StringMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_StringMessage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_PingReply proto.InternalMessageInfo
+var xxx_messageInfo_StringMessage proto.InternalMessageInfo
 
-func (m *PingReply) GetMessage() string {
+func (m *StringMessage) GetMessage() string {
 	if m != nil {
 		return m.Message
 	}
 	return ""
 }
 
+type NodeInfo struct {
+	DoogleAddress        []byte   `protobuf:"bytes,1,opt,name=doogleAddress,proto3" json:"doogleAddress,omitempty"`
+	NetworkAddress       string   `protobuf:"bytes,2,opt,name=networkAddress,proto3" json:"networkAddress,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *NodeInfo) Reset()         { *m = NodeInfo{} }
+func (m *NodeInfo) String() string { return proto.CompactTextString(m) }
+func (*NodeInfo) ProtoMessage()    {}
+func (*NodeInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{2}
+}
+
+func (m *NodeInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_NodeInfo.Unmarshal(m, b)
+}
+func (m *NodeInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_NodeInfo.Marshal(b, m, deterministic)
+}
+func (m *NodeInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NodeInfo.Merge(m, src)
+}
+func (m *NodeInfo) XXX_Size() int {
+	return xxx_messageInfo_NodeInfo.Size(m)
+}
+func (m *NodeInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_NodeInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NodeInfo proto.InternalMessageInfo
+
+func (m *NodeInfo) GetDoogleAddress() []byte {
+	if m != nil {
+		return m.DoogleAddress
+	}
+	return nil
+}
+
+func (m *NodeInfo) GetNetworkAddress() string {
+	if m != nil {
+		return m.NetworkAddress
+	}
+	return ""
+}
+
+type NodeInfos struct {
+	Infos                []*NodeInfo `protobuf:"bytes,1,rep,name=infos,proto3" json:"infos,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
+}
+
+func (m *NodeInfos) Reset()         { *m = NodeInfos{} }
+func (m *NodeInfos) String() string { return proto.CompactTextString(m) }
+func (*NodeInfos) ProtoMessage()    {}
+func (*NodeInfos) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{3}
+}
+
+func (m *NodeInfos) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_NodeInfos.Unmarshal(m, b)
+}
+func (m *NodeInfos) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_NodeInfos.Marshal(b, m, deterministic)
+}
+func (m *NodeInfos) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NodeInfos.Merge(m, src)
+}
+func (m *NodeInfos) XXX_Size() int {
+	return xxx_messageInfo_NodeInfos.Size(m)
+}
+func (m *NodeInfos) XXX_DiscardUnknown() {
+	xxx_messageInfo_NodeInfos.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NodeInfos proto.InternalMessageInfo
+
+func (m *NodeInfos) GetInfos() []*NodeInfo {
+	if m != nil {
+		return m.Infos
+	}
+	return nil
+}
+
+type NodeCertificate struct {
+	DoogleAddress        []byte   `protobuf:"bytes,1,opt,name=doogleAddress,proto3" json:"doogleAddress,omitempty"`
+	NetworkAddress       string   `protobuf:"bytes,2,opt,name=networkAddress,proto3" json:"networkAddress,omitempty"`
+	PublicKey            []byte   `protobuf:"bytes,3,opt,name=publicKey,proto3" json:"publicKey,omitempty"`
+	Nonce                []byte   `protobuf:"bytes,4,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	Difficulty           int32    `protobuf:"varint,5,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *NodeCertificate) Reset()         { *m = NodeCertificate{} }
+func (m *NodeCertificate) String() string { return proto.CompactTextString(m) }
+func (*NodeCertificate) ProtoMessage()    {}
+func (*NodeCertificate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{4}
+}
+
+func (m *NodeCertificate) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_NodeCertificate.Unmarshal(m, b)
+}
+func (m *NodeCertificate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_NodeCertificate.Marshal(b, m, deterministic)
+}
+func (m *NodeCertificate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NodeCertificate.Merge(m, src)
+}
+func (m *NodeCertificate) XXX_Size() int {
+	return xxx_messageInfo_NodeCertificate.Size(m)
+}
+func (m *NodeCertificate) XXX_DiscardUnknown() {
+	xxx_messageInfo_NodeCertificate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NodeCertificate proto.InternalMessageInfo
+
+func (m *NodeCertificate) GetDoogleAddress() []byte {
+	if m != nil {
+		return m.DoogleAddress
+	}
+	return nil
+}
+
+func (m *NodeCertificate) GetNetworkAddress() string {
+	if m != nil {
+		return m.NetworkAddress
+	}
+	return ""
+}
+
+func (m *NodeCertificate) GetPublicKey() []byte {
+	if m != nil {
+		return m.PublicKey
+	}
+	return nil
+}
+
+func (m *NodeCertificate) GetNonce() []byte {
+	if m != nil {
+		return m.Nonce
+	}
+	return nil
+}
+
+func (m *NodeCertificate) GetDifficulty() int32 {
+	if m != nil {
+		return m.Difficulty
+	}
+	return 0
+}
+
+type StoreItemRequest struct {
+	Certificate          *NodeCertificate `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	Url                  string           `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	Title                string           `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Description          string           `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	EdgeURLs             []string         `protobuf:"bytes,5,rep,name=edgeURLs,proto3" json:"edgeURLs,omitempty"`
+	Index                string           `protobuf:"bytes,6,opt,name=index,proto3" json:"index,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *StoreItemRequest) Reset()         { *m = StoreItemRequest{} }
+func (m *StoreItemRequest) String() string { return proto.CompactTextString(m) }
+func (*StoreItemRequest) ProtoMessage()    {}
+func (*StoreItemRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{5}
+}
+
+func (m *StoreItemRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StoreItemRequest.Unmarshal(m, b)
+}
+func (m *StoreItemRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StoreItemRequest.Marshal(b, m, deterministic)
+}
+func (m *StoreItemRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreItemRequest.Merge(m, src)
+}
+func (m *StoreItemRequest) XXX_Size() int {
+	return xxx_messageInfo_StoreItemRequest.Size(m)
+}
+func (m *StoreItemRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreItemRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StoreItemRequest proto.InternalMessageInfo
+
+func (m *StoreItemRequest) GetCertificate() *NodeCertificate {
+	if m != nil {
+		return m.Certificate
+	}
+	return nil
+}
+
+func (m *StoreItemRequest) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+func (m *StoreItemRequest) GetTitle() string {
+	if m != nil {
+		return m.Title
+	}
+	return ""
+}
+
+func (m *StoreItemRequest) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+func (m *StoreItemRequest) GetEdgeURLs() []string {
+	if m != nil {
+		return m.EdgeURLs
+	}
+	return nil
+}
+
+func (m *StoreItemRequest) GetIndex() string {
+	if m != nil {
+		return m.Index
+	}
+	return ""
+}
+
+type Item struct {
+	Url                  string   `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	Title                string   `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description          string   `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	LocalRank            float64  `protobuf:"fixed64,4,opt,name=localRank,proto3" json:"localRank,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Item) Reset()         { *m = Item{} }
+func (m *Item) String() string { return proto.CompactTextString(m) }
+func (*Item) ProtoMessage()    {}
+func (*Item) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{6}
+}
+
+func (m *Item) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Item.Unmarshal(m, b)
+}
+func (m *Item) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Item.Marshal(b, m, deterministic)
+}
+func (m *Item) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Item.Merge(m, src)
+}
+func (m *Item) XXX_Size() int {
+	return xxx_messageInfo_Item.Size(m)
+}
+func (m *Item) XXX_DiscardUnknown() {
+	xxx_messageInfo_Item.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Item proto.InternalMessageInfo
+
+func (m *Item) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+func (m *Item) GetTitle() string {
+	if m != nil {
+		return m.Title
+	}
+	return ""
+}
+
+func (m *Item) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+func (m *Item) GetLocalRank() float64 {
+	if m != nil {
+		return m.LocalRank
+	}
+	return 0
+}
+
+type Items struct {
+	Items                []*Item  `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Items) Reset()         { *m = Items{} }
+func (m *Items) String() string { return proto.CompactTextString(m) }
+func (*Items) ProtoMessage()    {}
+func (*Items) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{7}
+}
+
+func (m *Items) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Items.Unmarshal(m, b)
+}
+func (m *Items) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Items.Marshal(b, m, deterministic)
+}
+func (m *Items) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Items.Merge(m, src)
+}
+func (m *Items) XXX_Size() int {
+	return xxx_messageInfo_Items.Size(m)
+}
+func (m *Items) XXX_DiscardUnknown() {
+	xxx_messageInfo_Items.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Items proto.InternalMessageInfo
+
+func (m *Items) GetItems() []*Item {
+	if m != nil {
+		return m.Items
+	}
+	return nil
+}
+
+type FindIndexRequest struct {
+	Certificate          *NodeCertificate `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	DoogleAddress        string           `protobuf:"bytes,2,opt,name=doogleAddress,proto3" json:"doogleAddress,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *FindIndexRequest) Reset()         { *m = FindIndexRequest{} }
+func (m *FindIndexRequest) String() string { return proto.CompactTextString(m) }
+func (*FindIndexRequest) ProtoMessage()    {}
+func (*FindIndexRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{8}
+}
+
+func (m *FindIndexRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FindIndexRequest.Unmarshal(m, b)
+}
+func (m *FindIndexRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FindIndexRequest.Marshal(b, m, deterministic)
+}
+func (m *FindIndexRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FindIndexRequest.Merge(m, src)
+}
+func (m *FindIndexRequest) XXX_Size() int {
+	return xxx_messageInfo_FindIndexRequest.Size(m)
+}
+func (m *FindIndexRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_FindIndexRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FindIndexRequest proto.InternalMessageInfo
+
+func (m *FindIndexRequest) GetCertificate() *NodeCertificate {
+	if m != nil {
+		return m.Certificate
+	}
+	return nil
+}
+
+func (m *FindIndexRequest) GetDoogleAddress() string {
+	if m != nil {
+		return m.DoogleAddress
+	}
+	return ""
+}
+
+type FindIndexReply struct {
+	// Types that are valid to be assigned to Result:
+	//	*FindIndexReply_NodeInfos
+	//	*FindIndexReply_Items
+	Result               isFindIndexReply_Result `protobuf_oneof:"result"`
+	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
+	XXX_unrecognized     []byte                  `json:"-"`
+	XXX_sizecache        int32                   `json:"-"`
+}
+
+func (m *FindIndexReply) Reset()         { *m = FindIndexReply{} }
+func (m *FindIndexReply) String() string { return proto.CompactTextString(m) }
+func (*FindIndexReply) ProtoMessage()    {}
+func (*FindIndexReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{9}
+}
+
+func (m *FindIndexReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FindIndexReply.Unmarshal(m, b)
+}
+func (m *FindIndexReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FindIndexReply.Marshal(b, m, deterministic)
+}
+func (m *FindIndexReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FindIndexReply.Merge(m, src)
+}
+func (m *FindIndexReply) XXX_Size() int {
+	return xxx_messageInfo_FindIndexReply.Size(m)
+}
+func (m *FindIndexReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_FindIndexReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FindIndexReply proto.InternalMessageInfo
+
+type isFindIndexReply_Result interface {
+	isFindIndexReply_Result()
+}
+
+type FindIndexReply_NodeInfos struct {
+	NodeInfos *NodeInfos `protobuf:"bytes,1,opt,name=nodeInfos,proto3,oneof"`
+}
+
+type FindIndexReply_Items struct {
+	Items *Items `protobuf:"bytes,2,opt,name=items,proto3,oneof"`
+}
+
+func (*FindIndexReply_NodeInfos) isFindIndexReply_Result() {}
+
+func (*FindIndexReply_Items) isFindIndexReply_Result() {}
+
+func (m *FindIndexReply) GetResult() isFindIndexReply_Result {
+	if m != nil {
+		return m.Result
+	}
+	return nil
+}
+
+func (m *FindIndexReply) GetNodeInfos() *NodeInfos {
+	if x, ok := m.GetResult().(*FindIndexReply_NodeInfos); ok {
+		return x.NodeInfos
+	}
+	return nil
+}
+
+func (m *FindIndexReply) GetItems() *Items {
+	if x, ok := m.GetResult().(*FindIndexReply_Items); ok {
+		return x.Items
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*FindIndexReply) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _FindIndexReply_OneofMarshaler, _FindIndexReply_OneofUnmarshaler, _FindIndexReply_OneofSizer, []interface{}{
+		(*FindIndexReply_NodeInfos)(nil),
+		(*FindIndexReply_Items)(nil),
+	}
+}
+
+func _FindIndexReply_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*FindIndexReply)
+	// result
+	switch x := m.Result.(type) {
+	case *FindIndexReply_NodeInfos:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.NodeInfos); err != nil {
+			return err
+		}
+	case *FindIndexReply_Items:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Items); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("FindIndexReply.Result has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _FindIndexReply_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*FindIndexReply)
+	switch tag {
+	case 1: // result.nodeInfos
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(NodeInfos)
+		err := b.DecodeMessage(msg)
+		m.Result = &FindIndexReply_NodeInfos{msg}
+		return true, err
+	case 2: // result.items
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Items)
+		err := b.DecodeMessage(msg)
+		m.Result = &FindIndexReply_Items{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _FindIndexReply_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*FindIndexReply)
+	// result
+	switch x := m.Result.(type) {
+	case *FindIndexReply_NodeInfos:
+		s := proto.Size(x.NodeInfos)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *FindIndexReply_Items:
+		s := proto.Size(x.Items)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
+type FindNodeRequest struct {
+	Certificate          *NodeCertificate `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	DoogleAddress        []byte           `protobuf:"bytes,2,opt,name=doogleAddress,proto3" json:"doogleAddress,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *FindNodeRequest) Reset()         { *m = FindNodeRequest{} }
+func (m *FindNodeRequest) String() string { return proto.CompactTextString(m) }
+func (*FindNodeRequest) ProtoMessage()    {}
+func (*FindNodeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{10}
+}
+
+func (m *FindNodeRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FindNodeRequest.Unmarshal(m, b)
+}
+func (m *FindNodeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FindNodeRequest.Marshal(b, m, deterministic)
+}
+func (m *FindNodeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FindNodeRequest.Merge(m, src)
+}
+func (m *FindNodeRequest) XXX_Size() int {
+	return xxx_messageInfo_FindNodeRequest.Size(m)
+}
+func (m *FindNodeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_FindNodeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FindNodeRequest proto.InternalMessageInfo
+
+func (m *FindNodeRequest) GetCertificate() *NodeCertificate {
+	if m != nil {
+		return m.Certificate
+	}
+	return nil
+}
+
+func (m *FindNodeRequest) GetDoogleAddress() []byte {
+	if m != nil {
+		return m.DoogleAddress
+	}
+	return nil
+}
+
+type GetIndexReply struct {
+	Items                []*Item  `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetIndexReply) Reset()         { *m = GetIndexReply{} }
+func (m *GetIndexReply) String() string { return proto.CompactTextString(m) }
+func (*GetIndexReply) ProtoMessage()    {}
+func (*GetIndexReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_947ca98c6f36e503, []int{11}
+}
+
+func (m *GetIndexReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetIndexReply.Unmarshal(m, b)
+}
+func (m *GetIndexReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetIndexReply.Marshal(b, m, deterministic)
+}
+func (m *GetIndexReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetIndexReply.Merge(m, src)
+}
+func (m *GetIndexReply) XXX_Size() int {
+	return xxx_messageInfo_GetIndexReply.Size(m)
+}
+func (m *GetIndexReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetIndexReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetIndexReply proto.InternalMessageInfo
+
+func (m *GetIndexReply) GetItems() []*Item {
+	if m != nil {
+		return m.Items
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Empty)(nil), "doogle.Empty")
-	proto.RegisterType((*PingReply)(nil), "doogle.PingReply")
+	proto.RegisterType((*StringMessage)(nil), "doogle.StringMessage")
+	proto.RegisterType((*NodeInfo)(nil), "doogle.NodeInfo")
+	proto.RegisterType((*NodeInfos)(nil), "doogle.NodeInfos")
+	proto.RegisterType((*NodeCertificate)(nil), "doogle.NodeCertificate")
+	proto.RegisterType((*StoreItemRequest)(nil), "doogle.StoreItemRequest")
+	proto.RegisterType((*Item)(nil), "doogle.Item")
+	proto.RegisterType((*Items)(nil), "doogle.Items")
+	proto.RegisterType((*FindIndexRequest)(nil), "doogle.FindIndexRequest")
+	proto.RegisterType((*FindIndexReply)(nil), "doogle.FindIndexReply")
+	proto.RegisterType((*FindNodeRequest)(nil), "doogle.FindNodeRequest")
+	proto.RegisterType((*GetIndexReply)(nil), "doogle.GetIndexReply")
 }
 
 func init() { proto.RegisterFile("doogle.proto", fileDescriptor_947ca98c6f36e503) }
 
 var fileDescriptor_947ca98c6f36e503 = []byte{
-	// 119 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0xc9, 0xcf, 0x4f,
-	0xcf, 0x49, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0xd8, 0xb9, 0x58,
-	0x5d, 0x73, 0x0b, 0x4a, 0x2a, 0x95, 0x54, 0xb9, 0x38, 0x03, 0x32, 0xf3, 0xd2, 0x83, 0x52, 0x0b,
-	0x72, 0x2a, 0x85, 0x24, 0xb8, 0xd8, 0x73, 0x53, 0x8b, 0x8b, 0x13, 0xd3, 0x53, 0x25, 0x18, 0x15,
-	0x18, 0x35, 0x38, 0x83, 0x60, 0x5c, 0x23, 0x53, 0x2e, 0x76, 0x17, 0x90, 0xce, 0x9c, 0x54, 0x21,
-	0x2d, 0x2e, 0x16, 0x90, 0x0e, 0x21, 0x5e, 0x3d, 0xa8, 0xc9, 0x60, 0x83, 0xa4, 0x04, 0x61, 0x5c,
-	0xb8, 0x71, 0x4a, 0x0c, 0x49, 0x6c, 0x60, 0x5b, 0x8d, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0x54,
-	0xf7, 0x4d, 0x48, 0x85, 0x00, 0x00, 0x00,
+	// 604 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0x5b, 0x6f, 0xd3, 0x30,
+	0x14, 0x26, 0x4d, 0x93, 0x36, 0xa7, 0xed, 0x56, 0xcc, 0x65, 0x51, 0x35, 0xa1, 0xca, 0x02, 0x54,
+	0x84, 0x34, 0xb4, 0x76, 0x42, 0xf0, 0xc0, 0x03, 0x97, 0x01, 0x15, 0x17, 0x4d, 0x1e, 0x13, 0xbc,
+	0x76, 0x89, 0x5b, 0xac, 0xa5, 0x76, 0x89, 0x5d, 0x41, 0x7f, 0x17, 0xbf, 0x82, 0x37, 0x7e, 0x12,
+	0xb2, 0xd3, 0x34, 0xee, 0x0d, 0x78, 0xd8, 0xde, 0x7c, 0xce, 0xf9, 0xce, 0x39, 0xdf, 0x77, 0x8e,
+	0xe3, 0x40, 0x3d, 0x16, 0x62, 0x94, 0xd0, 0x83, 0x49, 0x2a, 0x94, 0x40, 0x7e, 0x66, 0xe1, 0x0a,
+	0x78, 0xc7, 0xe3, 0x89, 0x9a, 0xe1, 0x07, 0xd0, 0x38, 0x55, 0x29, 0xe3, 0xa3, 0x0f, 0x54, 0xca,
+	0xc1, 0x88, 0xa2, 0x10, 0x2a, 0xe3, 0xec, 0x18, 0x3a, 0x6d, 0xa7, 0x13, 0x90, 0xdc, 0xc4, 0x5f,
+	0xa0, 0xfa, 0x51, 0xc4, 0xb4, 0xcf, 0x87, 0x02, 0xdd, 0x85, 0x46, 0x56, 0xe9, 0x79, 0x1c, 0xa7,
+	0x54, 0x4a, 0x83, 0xad, 0x93, 0x65, 0x27, 0xba, 0x0f, 0x3b, 0x9c, 0xaa, 0xef, 0x22, 0xbd, 0xc8,
+	0x61, 0x25, 0x53, 0x72, 0xc5, 0x8b, 0x7b, 0x10, 0xe4, 0x95, 0x75, 0x92, 0xc7, 0xf4, 0x21, 0x74,
+	0xda, 0x6e, 0xa7, 0xd6, 0x6d, 0x1e, 0xcc, 0x05, 0xe4, 0x08, 0x92, 0x85, 0xf1, 0x4f, 0x07, 0x76,
+	0xb5, 0xef, 0x25, 0x4d, 0x15, 0x1b, 0xb2, 0x68, 0xa0, 0xe8, 0xe5, 0xd2, 0x42, 0xfb, 0x10, 0x4c,
+	0xa6, 0xe7, 0x09, 0x8b, 0xde, 0xd1, 0x59, 0xe8, 0x9a, 0x4a, 0x85, 0x03, 0xdd, 0x04, 0x8f, 0x0b,
+	0x1e, 0xd1, 0xb0, 0x6c, 0x22, 0x99, 0x81, 0xee, 0x00, 0xc4, 0x6c, 0x38, 0x64, 0xd1, 0x34, 0x51,
+	0xb3, 0xd0, 0x6b, 0x3b, 0x1d, 0x8f, 0x58, 0x1e, 0xfc, 0xcb, 0x81, 0xe6, 0xa9, 0x12, 0x29, 0xed,
+	0x2b, 0x3a, 0x26, 0xf4, 0xdb, 0x94, 0x4a, 0x85, 0x9e, 0x42, 0x2d, 0x2a, 0x54, 0x18, 0xd2, 0xb5,
+	0xee, 0x9e, 0x2d, 0xdc, 0x12, 0x49, 0x6c, 0x2c, 0x6a, 0x82, 0x3b, 0x4d, 0x93, 0xb9, 0x00, 0x7d,
+	0xd4, 0xbc, 0x14, 0x53, 0x09, 0x35, 0x8c, 0x03, 0x92, 0x19, 0xa8, 0x0d, 0xb5, 0x98, 0xca, 0x28,
+	0x65, 0x13, 0xc5, 0x04, 0x37, 0x9c, 0x03, 0x62, 0xbb, 0x50, 0x0b, 0xaa, 0x34, 0x1e, 0xd1, 0x33,
+	0xf2, 0x5e, 0x86, 0x5e, 0xdb, 0xed, 0x04, 0x64, 0x61, 0xeb, 0x9a, 0x8c, 0xc7, 0xf4, 0x47, 0xe8,
+	0x67, 0x35, 0x8d, 0x81, 0x39, 0x94, 0xb5, 0x8a, 0x9c, 0x83, 0xb3, 0x81, 0x43, 0xe9, 0x2f, 0x1c,
+	0xdc, 0x75, 0x0e, 0xfb, 0x10, 0x24, 0x22, 0x1a, 0x24, 0x64, 0xc0, 0x2f, 0x0c, 0x47, 0x87, 0x14,
+	0x0e, 0xfc, 0x10, 0x3c, 0xdd, 0x4f, 0x22, 0x0c, 0x1e, 0xd3, 0x87, 0xf9, 0x15, 0xa9, 0xe7, 0x93,
+	0x32, 0x33, 0xcd, 0x42, 0x58, 0x42, 0xf3, 0x35, 0xe3, 0x71, 0x5f, 0x33, 0xbd, 0x84, 0x39, 0xaf,
+	0xdd, 0xac, 0x4c, 0xd9, 0xb2, 0x13, 0x2b, 0xd8, 0xb1, 0x9a, 0x4e, 0x92, 0x19, 0x3a, 0x84, 0x80,
+	0xe7, 0x57, 0x7b, 0xde, 0xf0, 0xfa, 0xea, 0x8d, 0x96, 0x6f, 0xaf, 0x91, 0x02, 0x85, 0xee, 0xe5,
+	0xea, 0x4a, 0x06, 0xde, 0xb0, 0xd5, 0x69, 0x68, 0x16, 0x7d, 0x51, 0x05, 0x3f, 0xa5, 0x72, 0x9a,
+	0x28, 0x9c, 0xc2, 0xae, 0xee, 0xaa, 0xcb, 0x5d, 0x95, 0xd2, 0xd5, 0x6f, 0x08, 0xf7, 0xa0, 0xf1,
+	0x86, 0x2a, 0x4b, 0xe8, 0x7f, 0xec, 0xa4, 0xfb, 0xdb, 0x05, 0xff, 0x95, 0x71, 0xa3, 0x23, 0x08,
+	0x16, 0x9f, 0x01, 0x0a, 0x73, 0xf0, 0xea, 0x97, 0xd1, 0x5a, 0x88, 0x37, 0xaf, 0x15, 0x7a, 0x06,
+	0xc1, 0x62, 0xbe, 0x45, 0xd6, 0xea, 0x9e, 0x5b, 0xb7, 0x37, 0x44, 0x34, 0xc7, 0xc7, 0x50, 0xcd,
+	0x07, 0x85, 0xf6, 0x6c, 0x8c, 0x35, 0xba, 0xd6, 0xfa, 0x7a, 0xd0, 0x31, 0xdc, 0x38, 0x61, 0x7c,
+	0xf4, 0x99, 0xa9, 0xaf, 0xf6, 0x6b, 0xb3, 0x6d, 0x9e, 0xad, 0x5b, 0x85, 0x1e, 0xfb, 0x69, 0x3d,
+	0x82, 0xb2, 0x2e, 0x83, 0x36, 0x87, 0xb7, 0x65, 0x1d, 0x82, 0xaf, 0xb3, 0x3e, 0x09, 0xb4, 0xf6,
+	0x14, 0x6e, 0x4b, 0x79, 0x02, 0xd5, 0x7c, 0x39, 0xff, 0x6c, 0xb6, 0xbc, 0xc5, 0x47, 0x50, 0x39,
+	0x11, 0x52, 0x9d, 0xa5, 0xc9, 0xb6, 0xc4, 0xe5, 0x8d, 0x9c, 0xfb, 0xe6, 0xbf, 0xd2, 0xfb, 0x13,
+	0x00, 0x00, 0xff, 0xff, 0x7c, 0x2d, 0x68, 0x27, 0x67, 0x06, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -121,66 +776,305 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// DooglleClient is the client API for Dooglle service.
+// DoogleClient is the client API for Doogle service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type DooglleClient interface {
-	// Sends a greeting
-	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*PingReply, error)
+type DoogleClient interface {
+	// Store give index
+	StoreItem(ctx context.Context, in *StoreItemRequest, opts ...grpc.CallOption) (*Empty, error)
+	// find index of given key
+	FindIndex(ctx context.Context, in *FindIndexRequest, opts ...grpc.CallOption) (*FindIndexReply, error)
+	// return k closed nodes to given address
+	FindNode(ctx context.Context, in *FindNodeRequest, opts ...grpc.CallOption) (*NodeInfos, error)
+	// health check
+	PingWithCertificate(ctx context.Context, in *NodeCertificate, opts ...grpc.CallOption) (*StringMessage, error)
+	// the following endpoints can be accessed from outside of the network.
+	Ping(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*StringMessage, error)
+	PingTo(ctx context.Context, in *NodeInfo, opts ...grpc.CallOption) (*StringMessage, error)
+	GetIndex(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*GetIndexReply, error)
+	PostUrl(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*Empty, error)
 }
 
-type dooglleClient struct {
+type doogleClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewDooglleClient(cc *grpc.ClientConn) DooglleClient {
-	return &dooglleClient{cc}
+func NewDoogleClient(cc *grpc.ClientConn) DoogleClient {
+	return &doogleClient{cc}
 }
 
-func (c *dooglleClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*PingReply, error) {
-	out := new(PingReply)
-	err := c.cc.Invoke(ctx, "/doogle.Dooglle/Ping", in, out, opts...)
+func (c *doogleClient) StoreItem(ctx context.Context, in *StoreItemRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/StoreItem", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// DooglleServer is the server API for Dooglle service.
-type DooglleServer interface {
-	// Sends a greeting
-	Ping(context.Context, *Empty) (*PingReply, error)
+func (c *doogleClient) FindIndex(ctx context.Context, in *FindIndexRequest, opts ...grpc.CallOption) (*FindIndexReply, error) {
+	out := new(FindIndexReply)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/FindIndex", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func RegisterDooglleServer(s *grpc.Server, srv DooglleServer) {
-	s.RegisterService(&_Dooglle_serviceDesc, srv)
+func (c *doogleClient) FindNode(ctx context.Context, in *FindNodeRequest, opts ...grpc.CallOption) (*NodeInfos, error) {
+	out := new(NodeInfos)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/FindNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func _Dooglle_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+func (c *doogleClient) PingWithCertificate(ctx context.Context, in *NodeCertificate, opts ...grpc.CallOption) (*StringMessage, error) {
+	out := new(StringMessage)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/PingWithCertificate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *doogleClient) Ping(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*StringMessage, error) {
+	out := new(StringMessage)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *doogleClient) PingTo(ctx context.Context, in *NodeInfo, opts ...grpc.CallOption) (*StringMessage, error) {
+	out := new(StringMessage)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/PingTo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *doogleClient) GetIndex(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*GetIndexReply, error) {
+	out := new(GetIndexReply)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/GetIndex", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *doogleClient) PostUrl(ctx context.Context, in *StringMessage, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/doogle.Doogle/PostUrl", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DoogleServer is the server API for Doogle service.
+type DoogleServer interface {
+	// Store give index
+	StoreItem(context.Context, *StoreItemRequest) (*Empty, error)
+	// find index of given key
+	FindIndex(context.Context, *FindIndexRequest) (*FindIndexReply, error)
+	// return k closed nodes to given address
+	FindNode(context.Context, *FindNodeRequest) (*NodeInfos, error)
+	// health check
+	PingWithCertificate(context.Context, *NodeCertificate) (*StringMessage, error)
+	// the following endpoints can be accessed from outside of the network.
+	Ping(context.Context, *StringMessage) (*StringMessage, error)
+	PingTo(context.Context, *NodeInfo) (*StringMessage, error)
+	GetIndex(context.Context, *StringMessage) (*GetIndexReply, error)
+	PostUrl(context.Context, *StringMessage) (*Empty, error)
+}
+
+func RegisterDoogleServer(s *grpc.Server, srv DoogleServer) {
+	s.RegisterService(&_Doogle_serviceDesc, srv)
+}
+
+func _Doogle_StoreItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StoreItemRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DooglleServer).Ping(ctx, in)
+		return srv.(DoogleServer).StoreItem(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/doogle.Dooglle/Ping",
+		FullMethod: "/doogle.Doogle/StoreItem",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DooglleServer).Ping(ctx, req.(*Empty))
+		return srv.(DoogleServer).StoreItem(ctx, req.(*StoreItemRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Dooglle_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "doogle.Dooglle",
-	HandlerType: (*DooglleServer)(nil),
+func _Doogle_FindIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindIndexRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).FindIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/FindIndex",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).FindIndex(ctx, req.(*FindIndexRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Doogle_FindNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).FindNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/FindNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).FindNode(ctx, req.(*FindNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Doogle_PingWithCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeCertificate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).PingWithCertificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/PingWithCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).PingWithCertificate(ctx, req.(*NodeCertificate))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Doogle_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StringMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).Ping(ctx, req.(*StringMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Doogle_PingTo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).PingTo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/PingTo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).PingTo(ctx, req.(*NodeInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Doogle_GetIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StringMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).GetIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/GetIndex",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).GetIndex(ctx, req.(*StringMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Doogle_PostUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StringMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DoogleServer).PostUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/doogle.Doogle/PostUrl",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DoogleServer).PostUrl(ctx, req.(*StringMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _Doogle_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "doogle.Doogle",
+	HandlerType: (*DoogleServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "StoreItem",
+			Handler:    _Doogle_StoreItem_Handler,
+		},
+		{
+			MethodName: "FindIndex",
+			Handler:    _Doogle_FindIndex_Handler,
+		},
+		{
+			MethodName: "FindNode",
+			Handler:    _Doogle_FindNode_Handler,
+		},
+		{
+			MethodName: "PingWithCertificate",
+			Handler:    _Doogle_PingWithCertificate_Handler,
+		},
+		{
 			MethodName: "Ping",
-			Handler:    _Dooglle_Ping_Handler,
+			Handler:    _Doogle_Ping_Handler,
+		},
+		{
+			MethodName: "PingTo",
+			Handler:    _Doogle_PingTo_Handler,
+		},
+		{
+			MethodName: "GetIndex",
+			Handler:    _Doogle_GetIndex_Handler,
+		},
+		{
+			MethodName: "PostUrl",
+			Handler:    _Doogle_PostUrl_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

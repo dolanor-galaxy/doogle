@@ -3,16 +3,86 @@ syntax = "proto3";
 
 package doogle;
 
-// The greeting service definition.
-service Dooglle {
-    // Sends a greeting
-    rpc Ping (Empty) returns (PingReply) {}
-}
-
-// The request message containing the user's name.
 message Empty {}
 
-// The response message containing the greetings
-message PingReply {
+message StringMessage {
     string message = 1;
+}
+
+message NodeInfo {
+    bytes doogleAddress =1;
+    string networkAddress = 2;
+}
+
+message NodeInfos {
+    repeated NodeInfo infos = 1;
+}
+
+message NodeCertificate {
+    bytes doogleAddress = 1;
+    string networkAddress = 2;
+    bytes publicKey = 3;
+    bytes nonce = 4;
+    int32 difficulty = 5;
+}
+
+service Doogle {
+    // Store give index
+    rpc StoreItem(StoreItemRequest) returns (Empty);
+
+    // find index of given key
+    rpc FindIndex(FindIndexRequest) returns(FindIndexReply);
+
+    // return k closed nodes to given address
+    rpc FindNode(FindNodeRequest) returns(NodeInfos);
+
+    // health check
+    rpc PingWithCertificate (NodeCertificate) returns (StringMessage);
+
+    // the following endpoints can be accessed from outside of the network.
+    rpc Ping (StringMessage) returns(StringMessage);
+    rpc PingTo(NodeInfo) returns (StringMessage); // request to send PingRequest to given node
+    rpc GetIndex(StringMessage) returns(GetIndexReply); // get index of given query
+    rpc PostUrl(StringMessage) returns (Empty); // post url in order for it to be indexed
+}
+
+message StoreItemRequest {
+    NodeCertificate certificate = 1;
+    string url = 2;
+    string title = 3;
+    string description = 4;
+    repeated string edgeURLs = 5;
+    string index = 6;
+}
+
+message Item {
+    string url = 1;
+    string title = 2;
+    string description = 3;
+    double localRank = 4;
+}
+
+message Items {
+    repeated Item items = 1;
+}
+
+message FindIndexRequest {
+    NodeCertificate certificate = 1;
+    string doogleAddress = 2;
+}
+
+message FindIndexReply {
+    oneof result {
+        NodeInfos nodeInfos = 1;
+        Items items = 2;
+    }
+}
+
+message FindNodeRequest {
+    NodeCertificate certificate = 1;
+    bytes doogleAddress = 2;
+}
+
+message GetIndexReply {
+    repeated Item items = 1;
 }
