@@ -335,38 +335,41 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	return ret, nil
 }
 
-func getOffset(offsetID int) (int, error) {
-	if offsetID == 0 {
-		return 0, nil
-	} else if offsetID > 319 {
+// 0 -> 1 -> -1 -> 2 -> -2 -> 3 -> ...
+
+func getNextOffset(msb, prevOffset int) (int, error) {
+	var next = prevOffset * -1
+	if prevOffset <= 0 {
+		next += 1
+	}
+
+	if msb+next > 159 && msb+(next*-1) >= 0 {
+		return next * -1, nil
+	}
+
+	if msb+next < 0 && msb+(next*-1+1) < 160 {
+		return next*-1 + 1, nil
+	}
+
+	if (msb+next > 159 && msb+(next*-1) < 0) || (msb+next < 0 && msb+(next*-1+1) >= 160) {
 		return 0, errors.Errorf("out of range")
 	}
 
-	var ret = offsetID / 2
-	if offsetID%2 == 0 {
-		ret *= -1
-	} else {
-		ret += 1
-	}
-	return ret, nil
+	return next, nil
 }
 
-func (n *Node) findNearestNode(targetAddr doogleAddress, msb, offsetID int) ([]*doogle.NodeInfo, error) {
-	offset, err := getOffset(offsetID)
-	fmt.Println("msb: ", msb, "offset: ", offset)
-	if err != nil {
-		return nil, nil
-	} else if msb+offset > 159 || msb+offset < 0 {
-		return n.findNearestNode(targetAddr, msb, offsetID+1)
-	}
-
+func (n *Node) findNearestNode(targetAddr doogleAddress, msb, offset int) ([]*doogle.NodeInfo, error) {
 	rb, ok := n.routingTable[msb+offset]
 	if !ok || rb == nil {
 		panic(fmt.Sprintf("the routing table on %d not exist", msb+offset))
 	}
 
 	if len(rb.bucket) == 0 {
-		return n.findNearestNode(targetAddr, msb, offsetID+1)
+		nextOffset, err := getNextOffset(msb, offset)
+		if err != nil {
+			return nil, nil
+		}
+		return n.findNearestNode(targetAddr, msb, nextOffset)
 	}
 
 	rb.mux.Lock()
