@@ -335,8 +335,6 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	return ret, nil
 }
 
-// 0 -> 1 -> -1 -> 2 -> -2 -> 3 -> ...
-
 func getNextOffset(msb, prevOffset int) (int, error) {
 	var next = prevOffset * -1
 	if prevOffset <= 0 {
