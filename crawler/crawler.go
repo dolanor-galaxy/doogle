@@ -7,6 +7,8 @@ import (
 
 	"strings"
 
+	"regexp"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -16,9 +18,20 @@ type Crawler interface {
 	AnalyzePage(url string) (title string, tokens, edgeURLs []string, err error)
 }
 
-type doogleCrawler struct{}
+type doogleCrawler struct {
+	tokenRegex *regexp.Regexp
+}
 
-func NewCrawler() (Crawler, error) { return nil, nil }
+var _ Crawler = &doogleCrawler{}
+
+func NewCrawler() (Crawler, error) {
+	r, err := regexp.Compile("([a-z]+)")
+	if err != nil {
+		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
+	}
+
+	return &doogleCrawler{tokenRegex: r}, nil
+}
 
 func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, error) {
 	res, err := http.Get(url)
@@ -38,6 +51,14 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
+
+		if tokenType == html.TextToken {
+			for _, w := range strings.Split(token.Data, " ") {
+				if c.tokenRegex.MatchString(w) {
+					tokens = append(tokens, w)
+				}
+			}
+		}
 
 		if tokenType == html.StartTagToken {
 			if token.Data == "title" {
@@ -68,5 +89,3 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 
 	return title, tokens, edgeURLs, nil
 }
-
-var _ Crawler = &doogleCrawler{}
