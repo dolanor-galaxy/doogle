@@ -28,9 +28,8 @@ const (
 type item struct {
 	dAddrStr doogleAddressStr
 
-	url         string
-	title       string
-	description string
+	url   string
+	title string
 
 	// outgoing hyperlinks
 	edges []doogleAddress
@@ -195,11 +194,10 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 	idxAddr := doogleAddressStr(h[:])
 
 	it := &item{
-		url:         in.Url,
-		dAddrStr:    itemAddr,
-		title:       in.Title,
-		edges:       es,
-		description: in.Description,
+		url:      in.Url,
+		dAddrStr: itemAddr,
+		title:    in.Title,
+		edges:    es,
 	}
 
 	// store item on index
@@ -564,7 +562,7 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 
 func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.Empty, error) {
 	// analyze the given url
-	title, desc, tokens, eURLs, err := n.crawler.AnalyzeURL(in.Message)
+	title, tokens, eURLs, err := n.crawler.AnalyzePage(in.Message)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to analyze to url: %v", err)
 	}
@@ -572,7 +570,6 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 	di := &doogle.StoreItemRequest{
 		Url:         in.Message,
 		Title:       title,
-		Description: desc,
 		EdgeURLs:    eURLs,
 		Certificate: n.certificate,
 	}
