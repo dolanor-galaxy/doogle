@@ -37,12 +37,12 @@ var (
 )
 
 type mockCrawler struct {
-	title, description string
-	tokens, edgeURLs   []string
+	title            string
+	tokens, edgeURLs []string
 }
 
-func (c *mockCrawler) AnalyzeURL(url string) (title, description string, tokens, edgeURLs []string, err error) {
-	return c.title, c.description, c.tokens, c.edgeURLs, nil
+func (c *mockCrawler) AnalyzePage(url string) (title string, tokens, edgeURLs []string, err error) {
+	return c.title, c.tokens, c.edgeURLs, nil
 }
 
 var _ crawler.Crawler = &mockCrawler{}
@@ -379,42 +379,36 @@ func TestNode_StoreItem(t *testing.T) {
 			Index:       string([]byte{1}),
 			Url:         string([]byte{10}),
 			Title:       "title10",
-			Description: "description10",
 		},
 		{
 			Certificate: from.node.certificate,
 			Index:       string([]byte{1}),
 			Url:         string([]byte{11}),
 			Title:       "title11",
-			Description: "description11",
 		},
 		{
 			Certificate: from.node.certificate,
 			Index:       string([]byte{1}),
 			Url:         string([]byte{12}),
 			Title:       "title12",
-			Description: "description12",
 		},
 		{
 			Certificate: from.node.certificate,
 			Index:       string([]byte{2}),
 			Url:         string([]byte{20}),
 			Title:       "title20",
-			Description: "description1",
 		},
 		{
 			Certificate: from.node.certificate,
 			Index:       string([]byte{2}),
 			Url:         string([]byte{20}),
 			Title:       "title20",
-			Description: "description1",
 		},
 		{
 			Certificate: from.node.certificate,
 			Index:       string([]byte{3}),
 			Url:         string([]byte{30}),
 			Title:       "title30",
-			Description: "description1",
 		},
 	} {
 		c := cc
@@ -822,19 +816,17 @@ func TestNode_PostUrl(t *testing.T) {
 		{
 			url: "url1",
 			cr: &mockCrawler{
-				title:       "title1",
-				description: "description",
-				edgeURLs:    []string{},
-				tokens:      []string{string([]byte{1}), string([]byte{2})},
+				title:    "title1",
+				edgeURLs: []string{},
+				tokens:   []string{string([]byte{1}), string([]byte{2})},
 			},
 		},
 		{
 			url: "url1",
 			cr: &mockCrawler{
-				title:       "title1",
-				description: "description",
-				edgeURLs:    []string{"foo.com", "bar.com"},
-				tokens:      []string{"token1", "token2"},
+				title:    "title1",
+				edgeURLs: []string{"foo.com", "bar.com"},
+				tokens:   []string{"token1", "token2"},
 			},
 		},
 	} {
@@ -876,7 +868,6 @@ func TestNode_PostUrl(t *testing.T) {
 				it, ok := raw.(*item)
 				assert.Equal(t, true, ok)
 				assert.Equal(t, c.cr.title, it.title)
-				assert.Equal(t, c.cr.description, it.description)
 				assert.Equal(t, len(c.cr.edgeURLs), len(it.edges))
 
 				for i, eu := range c.cr.edgeURLs {
