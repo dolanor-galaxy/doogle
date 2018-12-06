@@ -27,7 +27,7 @@ func NewCrawler() (Crawler, error) {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
 
-	urlRegex, err := regexp.Compile(`https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)`)
+	urlRegex, err := regexp.Compile(`^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$`)
 	if err != nil {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
@@ -85,7 +85,7 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 			for _, attr := range token.Attr {
 				if attr.Key == "href" {
 					_, ok := selected[attr.Val]
-					if c.urlRegex.MatchString(attr.Val) && ok {
+					if c.urlRegex.MatchString(attr.Val) && !ok {
 						edgeURLs = append(edgeURLs, attr.Val)
 					}
 				}
