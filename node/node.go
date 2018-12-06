@@ -457,7 +457,8 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 
 	// TODO: deal with complex queries, like AND, OR, etc.
 
-	var targetAddr = doogleAddressStr(in.Message)
+	h := sha1.Sum([]byte(in.Message))
+	var targetAddr = doogleAddressStr(h[:])
 	res, err := n.findIndex(ctx, targetAddr)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findIndex failed: %v", err)
@@ -567,6 +568,8 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 		return nil, status.Errorf(codes.Internal, "failed to analyze to url: %v", err)
 	}
 
+	fmt.Println("title: ", title, ",  eURLs: ", eURLs)
+
 	di := &doogle.StoreItemRequest{
 		Url:         in.Message,
 		Title:       title,
@@ -615,7 +618,7 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 			wg.Wait()
 		}
 	}
-	return nil, nil
+	return &doogle.Empty{}, nil
 }
 
 func (n *Node) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate) (*doogle.StringMessage, error) {
