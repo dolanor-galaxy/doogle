@@ -1,13 +1,10 @@
 package crawler
 
 import (
-	"net/http"
-
 	"io"
-
-	"strings"
-
+	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
@@ -19,18 +16,23 @@ type Crawler interface {
 }
 
 type doogleCrawler struct {
-	tokenRegex *regexp.Regexp
+	tokenRegex, urlRegex *regexp.Regexp
 }
 
 var _ Crawler = &doogleCrawler{}
 
 func NewCrawler() (Crawler, error) {
-	r, err := regexp.Compile("([a-z]+)")
+	tRegex, err := regexp.Compile("([a-z0-9]+)")
 	if err != nil {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
 
-	return &doogleCrawler{tokenRegex: r}, nil
+	urlRegex, err := regexp.Compile(`^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$`)
+	if err != nil {
+		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
+	}
+
+	return &doogleCrawler{tokenRegex: tRegex, urlRegex: urlRegex}, nil
 }
 
 func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, error) {
@@ -49,12 +51,15 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 	var tokens []string
 	var edgeURLs []string
 
+	selected := map[string]interface{}{}
+
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
 
 		if tokenType == html.TextToken {
 			for _, w := range strings.Split(token.Data, " ") {
-				if c.tokenRegex.MatchString(w) {
+				_, ok := selected[w]
+				if c.tokenRegex.MatchString(w) && !ok {
 					tokens = append(tokens, w)
 				}
 			}
@@ -66,7 +71,10 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 				title = doc.Token().String()
 
 				for _, w := range strings.Split(title, " ") {
-					tokens = append(tokens, w)
+					_, ok := selected[w]
+					if c.tokenRegex.MatchString(w) && !ok {
+						tokens = append(tokens, w)
+					}
 				}
 			}
 
@@ -76,7 +84,10 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 			}
 			for _, attr := range token.Attr {
 				if attr.Key == "href" {
-					edgeURLs = append(edgeURLs, attr.Val)
+					_, ok := selected[attr.Val]
+					if c.urlRegex.MatchString(attr.Val) && !ok {
+						edgeURLs = append(edgeURLs, attr.Val)
+					}
 				}
 			}
 		}
@@ -86,6 +97,5 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 	if title == "" || len(tokens) == 0 || len(edgeURLs) == 0 {
 		return "", nil, nil, errors.Errorf("failed to get sufficient information")
 	}
-
 	return title, tokens, edgeURLs, nil
 }

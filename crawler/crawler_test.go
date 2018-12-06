@@ -46,13 +46,13 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen",
 			expEdges:  []string{"https://www.google.com", "https://www.doogle.com"},
-			expTokens: []string{"This", "is", "a", "pen"},
+			expTokens: []string{"This", "is", "a", "pen", "123456", "123456"},
 		},
 		{
 			target: `
 <!DOCTYPE html><html>
 	<header>
-		<title>This is a pen</title>
+		<title>This is a pen 100yen</title>
 	</header>
 	<body>
 		<a href="https://www.google.com"> 123456 </a>
@@ -60,9 +60,26 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 		<p> this is first text field</p>
 	</body>
 </html>`,
-			expTitle:  "This is a pen",
+			expTitle:  "This is a pen 100yen",
 			expEdges:  []string{"https://www.google.com", "https://www.doogle.com"},
-			expTokens: []string{"This", "is", "a", "pen", "this", "is", "first", "text", "field"},
+			expTokens: []string{"This", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
+		},
+		{
+			target: `
+<!DOCTYPE html><html>
+	<header>
+		<title>This is a pen 100yen</title>
+	</header>
+	<body>
+		<a href="https://www.google.com"> 123456 </a>
+		<a href="htt://www.doogle.com"> 123456 </a>
+		<a href="/img/cat.jpg"></a>
+		<p> this is first text field</p>
+	</body>
+</html>`,
+			expTitle:  "This is a pen 100yen",
+			expEdges:  []string{"https://www.google.com"},
+			expTokens: []string{"This", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
 		},
 	} {
 		c := cc
@@ -80,8 +97,6 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 			}
 
 			assert.Equal(t, len(c.expTokens), len(aTokens))
-
-			fmt.Println(aTokens)
 
 			for i := range c.expTokens {
 				assert.Equal(t, c.expTokens[i], aTokens[i])
