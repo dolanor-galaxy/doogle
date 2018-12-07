@@ -1109,7 +1109,7 @@ func TestNode_GetIndex(t *testing.T) {
 			}
 
 			h := sha1.Sum([]byte(c.dAddrStr))
-			srv.dht.Store(string(h[:]), dhtV)
+			srv.dht.Store(doogleAddressStr(string(h[:])), dhtV)
 
 			res, err := srv.GetIndex(
 				context.Background(),

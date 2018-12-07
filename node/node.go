@@ -459,6 +459,7 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 
 	h := sha1.Sum([]byte(in.Message))
 	var targetAddr = doogleAddressStr(h[:])
+
 	res, err := n.findIndex(ctx, targetAddr)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findIndex failed: %v", err)
