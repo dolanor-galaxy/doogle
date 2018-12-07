@@ -13,10 +13,12 @@ import (
 
 type Crawler interface {
 	AnalyzePage(url string) (title string, tokens, edgeURLs []string, err error)
+	StartCrawl() error
 }
 
 type doogleCrawler struct {
-	tokenRegex, urlRegex *regexp.Regexp
+	tokenRegex *regexp.Regexp
+	urlRegex   *regexp.Regexp
 }
 
 var _ Crawler = &doogleCrawler{}
@@ -33,6 +35,10 @@ func NewCrawler() (Crawler, error) {
 	}
 
 	return &doogleCrawler{tokenRegex: tRegex, urlRegex: urlRegex}, nil
+}
+
+func (c *doogleCrawler) StartCrawl() error {
+	return nil
 }
 
 func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, error) {

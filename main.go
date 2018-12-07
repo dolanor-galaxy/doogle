@@ -49,6 +49,11 @@ func main() {
 
 	logger.Infof("node created: doogleAddress=%v\n", hex.EncodeToString(srv.DAddr[:]))
 
+	err = cr.StartCrawl()
+	if err != nil {
+		logger.Fatal("failed to start crawler")
+	}
+
 	// register node
 	s := grpc.NewServer(grpc.UnaryInterceptor(doogle.UnaryServerInterceptor(logger)))
 	doogle.RegisterDoogleServer(s, srv)

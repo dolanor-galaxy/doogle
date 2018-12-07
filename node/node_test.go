@@ -45,6 +45,8 @@ func (c *mockCrawler) AnalyzePage(url string) (title string, tokens, edgeURLs []
 	return c.title, c.tokens, c.edgeURLs, nil
 }
 
+func (c *mockCrawler) StartCrawl() error { return nil }
+
 var _ crawler.Crawler = &mockCrawler{}
 
 func TestMain(m *testing.M) {
