@@ -445,6 +445,7 @@ func (n *Node) findIndex(ctx context.Context, dAddrStr doogleAddressStr) (*doogl
 				res.Items.Items = append(res.Items.Items, &doogle.Item{
 					Url:       it.url,
 					LocalRank: it.localRank,
+					Title:     it.title,
 				})
 			}
 		}
@@ -568,8 +569,6 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to analyze to url: %v", err)
 	}
-
-	fmt.Println("title: ", title, ",  eURLs: ", eURLs)
 
 	di := &doogle.StoreItemRequest{
 		Url:         in.Message,

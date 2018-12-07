@@ -1067,33 +1067,37 @@ func TestNode_GetIndex(t *testing.T) {
 	srv := testServers[0].node
 
 	for i, cc := range []struct {
-		dAddrStr doogleAddressStr
-		items    []*item
-		expected []string
+		dAddrStr  doogleAddressStr
+		items     []*item
+		expTitles []string
+		expUrls   []string
 	}{
 		{
 			dAddrStr: doogleAddressStr(string([]byte{0, 0, 1})),
 			items: []*item{
-				{url: "url1", dAddrStr: "address1", localRank: 0.3},
-				{url: "url2", dAddrStr: "address2", localRank: 0.2},
-				{url: "url3", dAddrStr: "address3", localRank: 0.1},
+				{url: "url1", dAddrStr: "address1", localRank: 0.3, title: "title1"},
+				{url: "url2", dAddrStr: "address2", localRank: 0.2, title: "title2"},
+				{url: "url3", dAddrStr: "address3", localRank: 0.1, title: "title3"},
 			},
-			expected: []string{"url1", "url2", "url3"},
+			expUrls:   []string{"url1", "url2", "url3"},
+			expTitles: []string{"title1", "title2", "title3"},
 		},
 		{
 			dAddrStr: doogleAddressStr(string([]byte{0, 1, 0})),
 			items: []*item{
-				{url: "url1", dAddrStr: "address1", localRank: 0.1},
-				{url: "url2", dAddrStr: "address2", localRank: 0.2},
-				{url: "url3", dAddrStr: "address3", localRank: 0.5},
-				{url: "url4", dAddrStr: "address4", localRank: 0.01},
+				{url: "url1", dAddrStr: "address1", localRank: 0.1, title: "title1"},
+				{url: "url2", dAddrStr: "address2", localRank: 0.2, title: "title2"},
+				{url: "url3", dAddrStr: "address3", localRank: 0.5, title: "title3"},
+				{url: "url4", dAddrStr: "address4", localRank: 0.01, title: "title4"},
 			},
-			expected: []string{"url3", "url2", "url1", "url4"},
+			expUrls:   []string{"url3", "url2", "url1", "url4"},
+			expTitles: []string{"title3", "title2", "title1", "title4"},
 		},
 		{
-			dAddrStr: doogleAddressStr(string([]byte{1, 1, 0})),
-			items:    []*item{},
-			expected: []string{},
+			dAddrStr:  doogleAddressStr(string([]byte{1, 1, 0})),
+			items:     []*item{},
+			expUrls:   []string{},
+			expTitles: []string{},
 		},
 	} {
 		c := cc
@@ -1118,10 +1122,13 @@ func TestNode_GetIndex(t *testing.T) {
 				})
 
 			assert.Equal(t, nil, err)
-			assert.Equal(t, len(c.expected), len(res.Items))
+			assert.Equal(t, len(c.expTitles), len(res.Items))
+			assert.Equal(t, len(c.expUrls), len(res.Items))
 
 			for i, ai := range res.Items {
-				assert.Equal(t, c.expected[i], ai.Url)
+				assert.Equal(t, c.expTitles[i], ai.Title)
+				assert.Equal(t, c.expUrls[i], ai.Url)
+
 			}
 		})
 	}
