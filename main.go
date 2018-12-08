@@ -32,7 +32,7 @@ func main() {
 	flag.StringVar(&port, "p", "", "port for node")
 	flag.IntVar(&difficulty, "d", 0, "difficulty for cryptographic puzzle")
 	flag.IntVar(&queueCap, "c", 0, "crawler's channel capacity")
-	flag.IntVar(&queueCap, "w", 0, "number of crawler's worker")
+	flag.IntVar(&numWorker, "w", 0, "number of crawler's worker")
 	flag.Parse()
 
 	// listen port
@@ -69,11 +69,11 @@ func main() {
 	}()
 
 	// make gRPC connection onto doogle node for crawler service
-	var conn *grpc.ClientConn
+	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	for err != nil {
-		conn, err = grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 		logger.Info("wait until the server starts listening...")
 		time.Sleep(5 * time.Second)
+		conn, err = grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	}
 
 	defer conn.Close()

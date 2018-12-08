@@ -1,15 +1,13 @@
 package crawler
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
-
-	"context"
 	"time"
-
-	"fmt"
 
 	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
@@ -90,7 +88,7 @@ func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, err
 }
 
 func (c *doogleCrawler) worker(id int) {
-	var workerFmt = fmt.Sprintf("[%d-th worker]", id)
+	var workerFmt = fmt.Sprintf("[%d-th crawler's worker]", id)
 	c.logger.Info(workerFmt, " started")
 
 	for {
