@@ -66,7 +66,7 @@ message Items {
 
 message FindIndexRequest {
     NodeCertificate certificate = 1;
-    string doogleAddress = 2;
+    bytes doogleAddress = 2;
 }
 
 message FindIndexReply {

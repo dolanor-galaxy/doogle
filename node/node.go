@@ -21,7 +21,6 @@ import (
 const (
 	alpha         = 3
 	bucketSize    = 20
-	maxIteration  = 3
 	maxNumGetItem = 20 // TODO: add paging option
 )
 
@@ -257,28 +256,7 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 	return &doogle.NodeInfos{Infos: ret}, nil
 }
 
-func (n *Node) getConnByNetworkAddress(nAddr string) (*grpc.ClientConn, error) {
-	var conn *grpc.ClientConn
-	var err error
-	raw, ok := n.nAddrToConn.Load(nAddr)
-	if !ok {
-		// ask nearest nodes for nodeInfo nearest to targetAddress
-		conn, err = grpc.Dial(nAddr, grpc.WithInsecure())
-		if err != nil {
-			return nil, errors.Errorf("did not connect: %v", err)
-		}
-
-		n.nAddrToConn.Store(nAddr, conn)
-	} else {
-		conn, ok = raw.(*grpc.ClientConn)
-		if !ok {
-			return nil, errors.Errorf("type conversation failed")
-		}
-	}
-	return conn, nil
-}
-
-func (n *Node) findNode(targetAddr doogleAddress, sentFromNAddr string) ([]*doogle.NodeInfo, error) {
+func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	var msb = getMostSignificantBit(n.DAddr.xor(targetAddr))
 	if msb < 0 {
 		return nil, status.Error(codes.Internal, "collision occurred")
@@ -286,84 +264,6 @@ func (n *Node) findNode(targetAddr doogleAddress, sentFromNAddr string) ([]*doog
 	ret, err := n.findNearestNode(targetAddr, msb, 0)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
-	}
-
-	prevMap := map[string]struct{}{}
-	for _, r := range ret {
-		prevMap[r.NetworkAddress] = struct{}{}
-	}
-
-	if len(ret) == 0 {
-		return []*doogle.NodeInfo{}, nil
-	}
-
-	var prevNum = len(ret)
-
-	for i := 0; i < maxIteration; i++ {
-		for _, r := range ret {
-			if r.NetworkAddress == n.certificate.NetworkAddress || r.NetworkAddress == sentFromNAddr {
-				continue
-			}
-
-			conn, err := n.getConnByNetworkAddress(r.NetworkAddress)
-			if err != nil {
-				continue
-			}
-
-			c := doogle.NewDoogleClient(conn)
-
-			rep, err := c.FindNode(context.Background(), &doogle.FindNodeRequest{
-				Certificate:   n.certificate,
-				DoogleAddress: targetAddr[:],
-			})
-
-			if err != nil {
-				n.logger.Errorf("failed to call FindNode: %v", err)
-				continue
-			}
-
-			// update routing table
-			for _, r := range rep.Infos {
-				var dAddr doogleAddress
-				copy(dAddr[:], r.DoogleAddress)
-				n.updateRoutingTable(&nodeInfo{
-					dAddr:      dAddr,
-					nAddr:      r.NetworkAddress,
-					accessedAt: time.Now().UTC().Unix(),
-				})
-			}
-		}
-
-		// get nearest nodes from its routing table
-		var msb = getMostSignificantBit(n.DAddr.xor(targetAddr))
-		if msb < 0 {
-			return nil, status.Error(codes.Internal, "collision occurred")
-		}
-
-		ret, err = n.findNearestNode(targetAddr, msb, 0)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "findNearestNode failed: %v", err)
-		}
-
-		// check duplication
-		var cnt int
-		for _, r := range ret {
-			if _, ok := prevMap[r.NetworkAddress]; ok {
-				cnt++
-			}
-		}
-
-		// if anything hasn't changed, break and return
-		if cnt == prevNum {
-			break
-		}
-
-		// reset prevMap/prevNum for next loop
-		prevMap = map[string]struct{}{}
-		for _, r := range ret {
-			prevMap[r.NetworkAddress] = struct{}{}
-		}
-		prevNum = len(ret)
 	}
 
 	return ret, nil
@@ -495,10 +395,10 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 
 	// TODO: deal with complex queries, like AND, OR, etc.
 
-	h := sha1.Sum([]byte(in.Message))
-	var targetAddr = doogleAddressStr(h[:])
+	targetAddr := sha1.Sum([]byte(in.Message))
+	var targetAddrStr = doogleAddressStr(targetAddr[:])
 
-	res, err := n.findIndex(ctx, targetAddr)
+	res, err := n.findIndex(ctx, targetAddrStr)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findIndex failed: %v", err)
 	}
@@ -528,7 +428,7 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 
 		// get nearest nodes
 		var dAddr doogleAddress
-		copy(dAddr[:], targetAddr)
+		copy(dAddr[:], targetAddrStr)
 		res, err := n.findNode(dAddr)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "findNode failed: %v", err)
@@ -556,10 +456,12 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 			}
 
 			c := doogle.NewDoogleClient(conn)
+
 			res, err = c.FindIndex(context.Background(), &doogle.FindIndexRequest{
 				Certificate:   n.certificate,
-				DoogleAddress: string(targetAddr),
+				DoogleAddress: targetAddr[:],
 			})
+
 			if err != nil {
 				n.logger.Errorf("failed to call FindIndex: %v", err)
 				return
@@ -580,6 +482,22 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 						ret = append(ret, it)
 					}
 					mux.Unlock()
+				}
+			} else {
+				res, _ := res.Result.(*doogle.FindIndexReply_NodeInfos)
+				for _, ni := range res.NodeInfos.Infos {
+					conn, err := n.getConnByNetworkAddress(ni.NetworkAddress)
+					if err != nil {
+						return
+					}
+
+					c := doogle.NewDoogleClient(conn)
+					res, err := c.PingWithCertificate(context.Background(), n.certificate)
+					if err != nil {
+						n.logger.Errorf("failed to PingWithCertificate")
+						return
+					}
+					n.isValidSender(res)
 				}
 			}
 		}()
@@ -686,6 +604,38 @@ func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringM
 	}
 
 	return nil, status.Errorf(codes.Internal, "recipient is invalid")
+}
+
+func (n *Node) getConnByNetworkAddress(nAddr string) (*grpc.ClientConn, error) {
+	var conn *grpc.ClientConn
+	var err error
+	raw, ok := n.nAddrToConn.Load(nAddr)
+	if !ok {
+		// ask nearest nodes for nodeInfo nearest to targetAddress
+		conn, err = grpc.Dial(nAddr, grpc.WithInsecure())
+		if err != nil {
+			return nil, errors.Errorf("did not connect: %v", err)
+		}
+
+		n.nAddrToConn.Store(nAddr, conn)
+	} else {
+		conn, ok = raw.(*grpc.ClientConn)
+		if !ok {
+			return nil, errors.Errorf("type conversation failed")
+		}
+	}
+	return conn, nil
+}
+
+func (n *Node) CloseConnections() {
+	n.nAddrToConn.Range(func(_, value interface{}) bool {
+		conn, ok := value.(*grpc.ClientConn)
+		if !ok {
+			n.logger.Errorf("type conversation failed")
+		}
+		conn.Close()
+		return true
+	})
 }
 
 func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Crawler) (*Node, error) {

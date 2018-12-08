@@ -94,10 +94,8 @@ func (c *doogleCrawler) worker(id int) {
 		time.Sleep(1 * time.Second)
 
 		url, _ := <-c.queue
-		c.logger.Infof("%s got url: %s", workerFmt, url)
 		_, _, urls, err := c.AnalyzePage(url)
 		if err != nil {
-			c.logger.Errorf("%s AnalyzePage failed : %v", workerFmt, err)
 			continue
 		}
 

@@ -53,11 +53,13 @@ func main() {
 		logger.Fatalf("failed to create node: %v", err)
 	}
 
+	defer srv.CloseConnections()
+
 	logger.Infof("node created: doogleAddress=%v\n", hex.EncodeToString(srv.DAddr[:]))
 
 	// register node
-	// interceptor := grpc.UnaryInterceptor(doogle.UnaryServerInterceptor(logger))
 	s := grpc.NewServer()
+	// s := grpc.NewServer(grpc.UnaryInterceptor(doogle.UnaryServerInterceptor(logger)))
 	doogle.RegisterDoogleServer(s, srv)
 	reflection.Register(s)
 
@@ -91,5 +93,5 @@ func main() {
 	<-gracefulStop
 
 	// graceful shutdown
-	s.Stop()
+	s.GracefulStop()
 }
