@@ -42,7 +42,7 @@ func main() {
 	}
 
 	// create crawler
-	cr, err := crawler.NewCrawler(queueCap, logger)
+	cr, err := crawler.NewCrawler(queueCap, numWorker, logger)
 	if err != nil {
 		logger.Fatalf("failed to initialize crawler: %v", err)
 	}
@@ -61,7 +61,8 @@ func main() {
 	reflection.Register(s)
 
 	go func() {
-		logger.Infof("node listen on port: %s \n", port)
+		logger.Infof("node listen on port: %s, num of crawler's worker: %d \n", port, numWorker)
+		logger.Infof("difficulty: %d, crawler's queue capacity: %d \n", difficulty, queueCap)
 		if err := s.Serve(lis); err != nil {
 			logger.Fatalf("failed to serve: %v", err)
 		}

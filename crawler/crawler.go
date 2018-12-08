@@ -9,6 +9,8 @@ import (
 	"context"
 	"time"
 
+	"fmt"
+
 	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -88,15 +90,17 @@ func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, err
 }
 
 func (c *doogleCrawler) worker(id int) {
-	c.logger.Infof("%d-th worker started", id)
+	var workerFmt = fmt.Sprintf("[%d-th worker]", id)
+	c.logger.Info(workerFmt, " started")
 
 	for {
-		time.Sleep(time.Second)
+		time.Sleep(1 * time.Millisecond)
 
-		v, _ := <-c.queue
-		_, _, urls, err := c.AnalyzePage(v)
+		url, _ := <-c.queue
+		c.logger.Infof("%s got url: %s", workerFmt, url)
+		_, _, urls, err := c.AnalyzePage(url)
 		if err != nil {
-			c.logger.Errorf("AnalyzePage failed : %v", err)
+			c.logger.Errorf("%s AnalyzePage failed : %v", workerFmt, err)
 			continue
 		}
 
@@ -105,7 +109,7 @@ func (c *doogleCrawler) worker(id int) {
 				Message: url,
 			})
 			if err != nil {
-				c.logger.Errorf("PostUrl failed : %v", err)
+				c.logger.Errorf("%s PostUrl failed : %v", workerFmt, err)
 			}
 		}
 	}
