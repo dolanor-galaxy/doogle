@@ -6,24 +6,30 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
 
 type Crawler interface {
 	AnalyzePage(url string) (title string, tokens, edgeURLs []string, err error)
-	StartCrawl() error
+	Crawl([]string)
+	SetDoogleClient(cl doogle.DoogleClient)
 }
 
 type doogleCrawler struct {
 	tokenRegex *regexp.Regexp
 	urlRegex   *regexp.Regexp
+	dClient    doogle.DoogleClient
+	queue      chan string
+	logger     *logrus.Logger
 }
 
 var _ Crawler = &doogleCrawler{}
 
-func NewCrawler() (Crawler, error) {
+func NewCrawler(cap int, logger *logrus.Logger) (Crawler, error) {
 	tRegex, err := regexp.Compile("([a-z0-9]+)")
 	if err != nil {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
@@ -34,11 +40,32 @@ func NewCrawler() (Crawler, error) {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
 
-	return &doogleCrawler{tokenRegex: tRegex, urlRegex: urlRegex}, nil
+	return &doogleCrawler{
+		tokenRegex: tRegex,
+		urlRegex:   urlRegex,
+		logger:     logger,
+		queue:      make(chan string, cap),
+	}, nil
 }
 
-func (c *doogleCrawler) StartCrawl() error {
-	return nil
+func (c *doogleCrawler) SetDoogleClient(cl doogle.DoogleClient) {
+	c.dClient = cl
+}
+
+func (c *doogleCrawler) Crawl(urls []string) {
+	if cap(c.queue) < 1 {
+		return
+	}
+
+	for _, url := range urls {
+		if c.urlRegex.MatchString(url) {
+			select {
+			case c.queue <- url:
+			default:
+				c.logger.Info("crawling queue is full")
+			}
+		}
+	}
 }
 
 func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, error) {

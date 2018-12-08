@@ -45,7 +45,9 @@ func (c *mockCrawler) AnalyzePage(url string) (title string, tokens, edgeURLs []
 	return c.title, c.tokens, c.edgeURLs, nil
 }
 
-func (c *mockCrawler) StartCrawl() error { return nil }
+func (c *mockCrawler) Crawl([]string) {}
+
+func (c *mockCrawler) SetDoogleClient(cl doogle.DoogleClient) {}
 
 var _ crawler.Crawler = &mockCrawler{}
 
@@ -72,7 +74,7 @@ func runServer(difficulty int, logger *logrus.Logger) (*Node, string) {
 	}
 
 	port := ":" + strings.Split(lis.Addr().String(), ":")[1]
-	node, err := NewNode(difficulty, localhost+port, logger, nil)
+	node, err := NewNode(difficulty, localhost+port, logger, &mockCrawler{})
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
 	}

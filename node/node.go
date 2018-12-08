@@ -229,6 +229,9 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		prev := raw.(*item)
 		it.localRank = prev.localRank
 		n.items.Store(it.dAddrStr, it)
+	} else {
+		// pass crawler
+		go n.crawler.Crawl(in.EdgeURLs)
 	}
 
 	return nil, nil

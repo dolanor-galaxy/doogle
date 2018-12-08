@@ -8,7 +8,7 @@ _Web search of the people, by the people, for the people with Go._
 
 doogle is a Proof of Concept software of __decentralized search engine__ based on gRPC written in Go.
 
-This is just a PoC, and so I am not serious about making doogle secure, scalable, usable in production etc.
+This is just a PoC, and so I am not serious about making doogle secure, scalable, usable in production, etc.
 
 
 ## algorithms behind doogle
@@ -38,11 +38,12 @@ Parreira, Josiane Xavier, et al. "Efficient and decentralized pagerank approxima
 ```
 ❯ ./doogle --help
 Usage of ./doogle:
+  -c int
+        crawler's channel capacity
   -d int
         difficulty for cryptographic puzzle
   -p string
         port for node
-
 ❯ ./doogle -p :12312 -d 1
 2018/11/28 16:27:10 node created: doogleAddress=b22c4df4064e9be97a5f592e8e4e4525a3cabe72
 2018/11/28 16:27:10 node listen on port: :12312

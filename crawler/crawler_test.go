@@ -10,7 +10,7 @@ import (
 )
 
 func TestDoogleCrawler_analyze(t *testing.T) {
-	crawler, _ := NewCrawler()
+	crawler, _ := NewCrawler("", 0, nil)
 	cr := crawler.(*doogleCrawler)
 
 	for i, cc := range []struct {
