@@ -1,16 +1,92 @@
 package crawler
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"testing"
 
-	"strings"
+	"time"
 
+	"github.com/mathetake/doogle/grpc"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
 
+type mockDoogleClient struct{}
+
+var mClient doogle.DoogleClient = mockDoogleClient{}
+
+func (mockDoogleClient) StoreItem(ctx context.Context, in *doogle.StoreItemRequest, opts ...grpc.CallOption) (*doogle.Empty, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) FindIndex(ctx context.Context, in *doogle.FindIndexRequest, opts ...grpc.CallOption) (*doogle.FindIndexReply, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) FindNode(ctx context.Context, in *doogle.FindNodeRequest, opts ...grpc.CallOption) (*doogle.NodeInfos, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate, opts ...grpc.CallOption) (*doogle.NodeCertificate, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) Ping(ctx context.Context, in *doogle.StringMessage, opts ...grpc.CallOption) (*doogle.StringMessage, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) PingTo(ctx context.Context, in *doogle.NodeInfo, opts ...grpc.CallOption) (*doogle.StringMessage, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) GetIndex(ctx context.Context, in *doogle.StringMessage, opts ...grpc.CallOption) (*doogle.GetIndexReply, error) {
+	return nil, nil
+}
+
+func (mockDoogleClient) PostUrl(ctx context.Context, in *doogle.StringMessage, opts ...grpc.CallOption) (*doogle.StringMessage, error) {
+	return nil, nil
+}
+
+func TestDoogleCrawler_worker(t *testing.T) {
+	logger := logrus.New()
+	crawler, _ := NewCrawler(1, 4, logger)
+	cr := crawler.(*doogleCrawler)
+	cr.SetDoogleClient(mClient)
+
+	for _, url := range []string{
+		"https://www.google.com",
+		"https://en.wikipedia.org/wiki/Kademlia",
+		"https://en.wikipedia.org/wiki/Distributed_hash_table",
+		"https://en.wikipedia.org/wiki/japan",
+		"https://en.wikipedia.org/wiki/golang",
+	} {
+		cr.queue <- url
+	}
+
+	time.Sleep(1 * time.Second)
+}
+
+func TestDoogleCrawler_Crawl(t *testing.T) {
+	logger := logrus.New()
+	crawler, _ := NewCrawler(4, 4, logger)
+	cr := crawler.(*doogleCrawler)
+	cr.SetDoogleClient(mClient)
+
+	cr.Crawl([]string{
+		"https://www.google.com",
+		"https://en.wikipedia.org/wiki/Kademlia",
+		"https://en.wikipedia.org/wiki/Distributed_hash_table",
+		"https://en.wikipedia.org/wiki/japan",
+	})
+
+	time.Sleep(1 * time.Second)
+}
+
 func TestDoogleCrawler_analyze(t *testing.T) {
-	crawler, _ := NewCrawler()
+	crawler, _ := NewCrawler(0, 0, nil)
 	cr := crawler.(*doogleCrawler)
 
 	for i, cc := range []struct {
@@ -46,7 +122,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen",
 			expEdges:  []string{"https://www.google.com", "https://www.doogle.com"},
-			expTokens: []string{"This", "is", "a", "pen", "123456", "123456"},
+			expTokens: []string{"this", "is", "a", "pen", "123456", "123456"},
 		},
 		{
 			target: `
@@ -62,7 +138,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen 100yen",
 			expEdges:  []string{"https://www.google.com", "https://www.doogle.com"},
-			expTokens: []string{"This", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
+			expTokens: []string{"this", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
 		},
 		{
 			target: `
@@ -79,7 +155,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen 100yen",
 			expEdges:  []string{"https://www.google.com"},
-			expTokens: []string{"This", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
+			expTokens: []string{"this", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
 		},
 	} {
 		c := cc

@@ -1,28 +1,39 @@
 package crawler
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
 
 type Crawler interface {
 	AnalyzePage(url string) (title string, tokens, edgeURLs []string, err error)
+	Crawl([]string)
+	SetDoogleClient(cl doogle.DoogleClient)
 }
 
 type doogleCrawler struct {
-	tokenRegex, urlRegex *regexp.Regexp
+	tokenRegex *regexp.Regexp
+	urlRegex   *regexp.Regexp
+	dClient    doogle.DoogleClient
+	queue      chan string
+	logger     *logrus.Logger
 }
 
 var _ Crawler = &doogleCrawler{}
 
-func NewCrawler() (Crawler, error) {
-	tRegex, err := regexp.Compile("([a-z0-9]+)")
+func NewCrawler(queueCap, numWorker int, logger *logrus.Logger) (Crawler, error) {
+	tRegex, err := regexp.Compile("^[A-Za-z0-9]+$")
 	if err != nil {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
@@ -32,7 +43,37 @@ func NewCrawler() (Crawler, error) {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
 
-	return &doogleCrawler{tokenRegex: tRegex, urlRegex: urlRegex}, nil
+	crawler := &doogleCrawler{
+		tokenRegex: tRegex,
+		urlRegex:   urlRegex,
+		logger:     logger,
+		queue:      make(chan string, queueCap),
+	}
+
+	for i := 0; i < numWorker; i++ {
+		go crawler.worker(i)
+	}
+
+	return crawler, nil
+}
+
+func (c *doogleCrawler) SetDoogleClient(cl doogle.DoogleClient) {
+	c.dClient = cl
+}
+
+func (c *doogleCrawler) Crawl(urls []string) {
+	if cap(c.queue) < 1 {
+		return
+	}
+
+	for _, url := range urls {
+		if c.urlRegex.MatchString(url) {
+			select {
+			case c.queue <- url:
+			default: // if the queue is full, ignore it
+			}
+		}
+	}
 }
 
 func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, error) {
@@ -43,6 +84,30 @@ func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, err
 
 	defer res.Body.Close()
 	return c.analyze(res.Body)
+}
+
+func (c *doogleCrawler) worker(id int) {
+	var workerFmt = fmt.Sprintf("[%d-th crawler's worker]", id)
+	c.logger.Info(workerFmt, " started")
+
+	for {
+		time.Sleep(1 * time.Second)
+
+		url, _ := <-c.queue
+		_, _, urls, err := c.AnalyzePage(url)
+		if err != nil {
+			continue
+		}
+
+		for _, url := range urls {
+			_, err := c.dClient.PostUrl(context.Background(), &doogle.StringMessage{
+				Message: url,
+			})
+			if err != nil {
+				c.logger.Errorf("%s PostUrl failed : %v", workerFmt, err)
+			}
+		}
+	}
 }
 
 func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, error) {
@@ -58,6 +123,7 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 
 		if tokenType == html.TextToken {
 			for _, w := range strings.Split(token.Data, " ") {
+				w := strings.ToLower(w)
 				_, ok := selected[w]
 				if c.tokenRegex.MatchString(w) && !ok {
 					tokens = append(tokens, w)
@@ -71,6 +137,7 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 				title = doc.Token().String()
 
 				for _, w := range strings.Split(title, " ") {
+					w := strings.ToLower(w)
 					_, ok := selected[w]
 					if c.tokenRegex.MatchString(w) && !ok {
 						tokens = append(tokens, w)
