@@ -33,7 +33,7 @@ type doogleCrawler struct {
 var _ Crawler = &doogleCrawler{}
 
 func NewCrawler(queueCap, numWorker int, logger *logrus.Logger) (Crawler, error) {
-	tRegex, err := regexp.Compile("([a-z0-9]+)")
+	tRegex, err := regexp.Compile("^[A-Za-z0-9]+$")
 	if err != nil {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
@@ -70,8 +70,7 @@ func (c *doogleCrawler) Crawl(urls []string) {
 		if c.urlRegex.MatchString(url) {
 			select {
 			case c.queue <- url:
-			default:
-				c.logger.Info("crawling queue is full")
+			default: // if the queue is full, ignore it
 			}
 		}
 	}
@@ -92,7 +91,7 @@ func (c *doogleCrawler) worker(id int) {
 	c.logger.Info(workerFmt, " started")
 
 	for {
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 
 		url, _ := <-c.queue
 		c.logger.Infof("%s got url: %s", workerFmt, url)
@@ -126,6 +125,7 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 
 		if tokenType == html.TextToken {
 			for _, w := range strings.Split(token.Data, " ") {
+				w := strings.ToLower(w)
 				_, ok := selected[w]
 				if c.tokenRegex.MatchString(w) && !ok {
 					tokens = append(tokens, w)
@@ -139,6 +139,7 @@ func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, err
 				title = doc.Token().String()
 
 				for _, w := range strings.Split(title, " ") {
+					w := strings.ToLower(w)
 					_, ok := selected[w]
 					if c.tokenRegex.MatchString(w) && !ok {
 						tokens = append(tokens, w)

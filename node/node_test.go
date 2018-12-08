@@ -34,6 +34,7 @@ var (
 		port string
 		node *Node
 	}
+	logger *logrus.Logger
 )
 
 type mockCrawler struct {
@@ -52,7 +53,7 @@ func (c *mockCrawler) SetDoogleClient(cl doogle.DoogleClient) {}
 var _ crawler.Crawler = &mockCrawler{}
 
 func TestMain(m *testing.M) {
-	logger := logrus.New()
+	logger = logrus.New()
 	logger.SetLevel(1)
 
 	for i := 0; i < numServer; i++ {
@@ -185,9 +186,8 @@ func TestNode_PingWithCertificate(t *testing.T) {
 			client := doogle.NewDoogleClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			r, err := client.PingWithCertificate(ctx, tc.node.certificate)
+			_, err = client.PingWithCertificate(ctx, tc.node.certificate)
 			assert.Equal(t, nil, err)
-			assert.Equal(t, "pong", r.Message)
 		})
 	}
 }
@@ -279,7 +279,7 @@ func TestNode_IsValidSender(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			c := cc
-			node, err := NewNode(2, "bar", nil, nil)
+			node, err := NewNode(2, "bar", logger, nil)
 			if err != nil {
 				t.Fatalf("failed to create new node: %v", err)
 			}
@@ -504,21 +504,19 @@ func TestGetNextOffset1(t *testing.T) {
 func TestGetNextOffset2(t *testing.T) {
 	for i := 0; i < 160; i++ {
 		c := i
-		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
-			offsets := make([]int, 0, 159)
+		offsets := make([]int, 0, 159)
 
-			var prevOffset int
-			var err error
-			for {
-				prevOffset, err = getNextOffset(c, prevOffset)
-				if err != nil {
-					break
-				} else {
-					offsets = append(offsets, prevOffset)
-				}
+		var prevOffset int
+		var err error
+		for {
+			prevOffset, err = getNextOffset(c, prevOffset)
+			if err != nil {
+				break
+			} else {
+				offsets = append(offsets, prevOffset)
 			}
-			assert.Equal(t, 159, len(offsets))
-		})
+		}
+		assert.Equal(t, 159, len(offsets))
 	}
 }
 
@@ -677,18 +675,14 @@ func TestNode_findNearestNode(t *testing.T) {
 			copy(dAddr[:], c.targetAddr)
 			msb := getMostSignificantBit(srv.DAddr.xor(dAddr))
 
-			fmt.Println("msb: ", msb, ", offset: ", c.bitOffset)
-
 			srv.routingTable[msb+c.bitOffset].bucket = c.before
 			ret, err := srv.findNearestNode(dAddr, msb, 0)
 
 			assert.Equal(t, nil, err)
 			assert.Equal(t, len(c.expected), len(ret))
 
-			for _, actual := range ret {
-				fmt.Println("actual.NetworkAddress:", []byte(actual.NetworkAddress))
-
-				//assert.Equal(t, c.expected[i], actual.NetworkAddress)
+			for i, actual := range ret {
+				assert.Equal(t, c.expected[i], actual.NetworkAddress)
 			}
 			resetRoutingTable()
 		})
@@ -993,8 +987,8 @@ func TestNode_findIndex_notFound(t *testing.T) {
 
 			assert.Equal(t, len(c.expected), len(ret.NodeInfos.Infos))
 
-			for i, actual := range ret.NodeInfos.Infos {
-				assert.Equal(t, c.expected[i], actual.NetworkAddress)
+			for j, actual := range ret.NodeInfos.Infos {
+				assert.Equal(t, c.expected[j], actual.NetworkAddress)
 			}
 		})
 	}
@@ -1054,9 +1048,9 @@ func TestNode_findIndex_Found(t *testing.T) {
 			assert.Equal(t, true, ok)
 			assert.Equal(t, len(c.expItems), len(ret.Items.Items))
 
-			for i, ai := range ret.Items.Items {
-				assert.Equal(t, c.expItems[i].url, ai.Url)
-				assert.Equal(t, c.expItems[i].localRank, ai.LocalRank)
+			for j, ai := range ret.Items.Items {
+				assert.Equal(t, c.expItems[j].url, ai.Url)
+				assert.Equal(t, c.expItems[j].localRank, ai.LocalRank)
 			}
 		})
 	}

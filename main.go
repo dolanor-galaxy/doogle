@@ -56,7 +56,8 @@ func main() {
 	logger.Infof("node created: doogleAddress=%v\n", hex.EncodeToString(srv.DAddr[:]))
 
 	// register node
-	s := grpc.NewServer(grpc.UnaryInterceptor(doogle.UnaryServerInterceptor(logger)))
+	// interceptor := grpc.UnaryInterceptor(doogle.UnaryServerInterceptor(logger))
+	s := grpc.NewServer()
 	doogle.RegisterDoogleServer(s, srv)
 	reflection.Register(s)
 
@@ -68,7 +69,9 @@ func main() {
 		}
 	}()
 
-	// make gRPC connection onto doogle node for crawler service
+	// TODO: start PageRank computing scheduler
+
+	// make gRPC connection to doogle node for crawler service
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	for err != nil {
 		logger.Info("wait until the server starts listening...")
@@ -88,5 +91,5 @@ func main() {
 	<-gracefulStop
 
 	// graceful shutdown
-	s.GracefulStop()
+	s.Stop()
 }

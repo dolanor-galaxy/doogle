@@ -30,7 +30,7 @@ func (mockDoogleClient) FindNode(ctx context.Context, in *doogle.FindNodeRequest
 	return nil, nil
 }
 
-func (mockDoogleClient) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate, opts ...grpc.CallOption) (*doogle.StringMessage, error) {
+func (mockDoogleClient) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate, opts ...grpc.CallOption) (*doogle.NodeCertificate, error) {
 	return nil, nil
 }
 
@@ -46,7 +46,7 @@ func (mockDoogleClient) GetIndex(ctx context.Context, in *doogle.StringMessage, 
 	return nil, nil
 }
 
-func (mockDoogleClient) PostUrl(ctx context.Context, in *doogle.StringMessage, opts ...grpc.CallOption) (*doogle.Empty, error) {
+func (mockDoogleClient) PostUrl(ctx context.Context, in *doogle.StringMessage, opts ...grpc.CallOption) (*doogle.StringMessage, error) {
 	return nil, nil
 }
 
@@ -122,7 +122,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen",
 			expEdges:  []string{"https://www.google.com", "https://www.doogle.com"},
-			expTokens: []string{"This", "is", "a", "pen", "123456", "123456"},
+			expTokens: []string{"this", "is", "a", "pen", "123456", "123456"},
 		},
 		{
 			target: `
@@ -138,7 +138,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen 100yen",
 			expEdges:  []string{"https://www.google.com", "https://www.doogle.com"},
-			expTokens: []string{"This", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
+			expTokens: []string{"this", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
 		},
 		{
 			target: `
@@ -155,7 +155,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 </html>`,
 			expTitle:  "This is a pen 100yen",
 			expEdges:  []string{"https://www.google.com"},
-			expTokens: []string{"This", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
+			expTokens: []string{"this", "is", "a", "pen", "100yen", "123456", "123456", "this", "is", "first", "text", "field"},
 		},
 	} {
 		c := cc

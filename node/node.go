@@ -21,7 +21,7 @@ import (
 const (
 	alpha         = 3
 	bucketSize    = 20
-	maxIteration  = 1e3
+	maxIteration  = 3
 	maxNumGetItem = 20 // TODO: add paging option
 )
 
@@ -68,6 +68,9 @@ type Node struct {
 
 	// crawler
 	crawler crawler.Crawler
+
+	// string -> *grpc.ClientConn
+	nAddrToConn sync.Map
 }
 
 var _ doogle.DoogleServer = &Node{}
@@ -173,6 +176,8 @@ func (n *Node) updateRoutingTable(info *nodeInfo) {
 	} else {
 		rb.popAndAppend(0, ni)
 	}
+
+	n.logger.Infof("[updateRoutingTable] new nodeInfo inserted: %s", info.nAddr)
 }
 
 func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doogle.Empty, error) {
@@ -230,11 +235,11 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		it.localRank = prev.localRank
 		n.items.Store(it.dAddrStr, it)
 	} else {
-		// pass crawler
+		// pass crawler and logging
 		go n.crawler.Crawl(in.EdgeURLs)
+		n.logger.Infof("[StoreItem] new item stored: url=%s, token=%s", it.url, in.Index)
 	}
-
-	return nil, nil
+	return &doogle.Empty{}, nil
 }
 
 func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogle.NodeInfos, error) {
@@ -252,7 +257,28 @@ func (n *Node) FindNode(ctx context.Context, in *doogle.FindNodeRequest) (*doogl
 	return &doogle.NodeInfos{Infos: ret}, nil
 }
 
-func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
+func (n *Node) getConnByNetworkAddress(nAddr string) (*grpc.ClientConn, error) {
+	var conn *grpc.ClientConn
+	var err error
+	raw, ok := n.nAddrToConn.Load(nAddr)
+	if !ok {
+		// ask nearest nodes for nodeInfo nearest to targetAddress
+		conn, err = grpc.Dial(nAddr, grpc.WithInsecure())
+		if err != nil {
+			return nil, errors.Errorf("did not connect: %v", err)
+		}
+
+		n.nAddrToConn.Store(nAddr, conn)
+	} else {
+		conn, ok = raw.(*grpc.ClientConn)
+		if !ok {
+			return nil, errors.Errorf("type conversation failed")
+		}
+	}
+	return conn, nil
+}
+
+func (n *Node) findNode(targetAddr doogleAddress, sentFromNAddr string) ([]*doogle.NodeInfo, error) {
 	var msb = getMostSignificantBit(n.DAddr.xor(targetAddr))
 	if msb < 0 {
 		return nil, status.Error(codes.Internal, "collision occurred")
@@ -266,18 +292,26 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 	for _, r := range ret {
 		prevMap[r.NetworkAddress] = struct{}{}
 	}
+
+	if len(ret) == 0 {
+		return []*doogle.NodeInfo{}, nil
+	}
+
 	var prevNum = len(ret)
 
 	for i := 0; i < maxIteration; i++ {
 		for _, r := range ret {
-			// ask nearest nodes for nodeInfo nearest to targetAddress
-			conn, err := grpc.Dial(r.NetworkAddress, grpc.WithInsecure())
+			if r.NetworkAddress == n.certificate.NetworkAddress || r.NetworkAddress == sentFromNAddr {
+				continue
+			}
+
+			conn, err := n.getConnByNetworkAddress(r.NetworkAddress)
 			if err != nil {
-				n.logger.Errorf("did not connect: %v", err)
 				continue
 			}
 
 			c := doogle.NewDoogleClient(conn)
+
 			rep, err := c.FindNode(context.Background(), &doogle.FindNodeRequest{
 				Certificate:   n.certificate,
 				DoogleAddress: targetAddr[:],
@@ -287,7 +321,6 @@ func (n *Node) findNode(targetAddr doogleAddress) ([]*doogle.NodeInfo, error) {
 				n.logger.Errorf("failed to call FindNode: %v", err)
 				continue
 			}
-			conn.Close()
 
 			// update routing table
 			for _, r := range rep.Infos {
@@ -374,29 +407,29 @@ func (n *Node) findNearestNode(targetAddr doogleAddress, msb, offset int) ([]*do
 	rb.mux.Lock()
 	defer rb.mux.Unlock()
 
+	var ret []*doogle.NodeInfo
 	if len(rb.bucket) < alpha {
-		ret := make([]*doogle.NodeInfo, len(rb.bucket))
+		ret = make([]*doogle.NodeInfo, len(rb.bucket))
 		for i := range ret {
 			ret[i] = &doogle.NodeInfo{
 				DoogleAddress:  rb.bucket[i].dAddr[:],
 				NetworkAddress: rb.bucket[i].nAddr,
 			}
 		}
-		return ret, nil
-	}
+	} else {
+		ns := make([]*nodeInfo, len(rb.bucket))
+		copy(ns, rb.bucket)
 
-	ns := make([]*nodeInfo, len(rb.bucket))
-	copy(ns, rb.bucket)
+		sort.Slice(ns, func(i, j int) bool {
+			return ns[i].dAddr.xor(targetAddr).lessThanEqual(ns[j].dAddr.xor(targetAddr))
+		})
 
-	sort.Slice(ns, func(i, j int) bool {
-		return ns[i].dAddr.xor(targetAddr).lessThanEqual(ns[j].dAddr.xor(targetAddr))
-	})
-
-	ret := make([]*doogle.NodeInfo, alpha)
-	for i := range ret {
-		ret[i] = &doogle.NodeInfo{
-			NetworkAddress: ns[i].nAddr,
-			DoogleAddress:  ns[i].dAddr[:],
+		ret = make([]*doogle.NodeInfo, alpha)
+		for i := range ret {
+			ret[i] = &doogle.NodeInfo{
+				NetworkAddress: ns[i].nAddr,
+				DoogleAddress:  ns[i].dAddr[:],
+			}
 		}
 	}
 	return ret, nil
@@ -454,6 +487,7 @@ func (n *Node) findIndex(ctx context.Context, dAddrStr doogleAddressStr) (*doogl
 		}
 	}
 	rep.Result = res
+
 	return rep, nil
 }
 
@@ -515,10 +549,9 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			conn, err := grpc.Dial(nAddr, grpc.WithInsecure())
-			defer conn.Close()
+
+			conn, err := n.getConnByNetworkAddress(nAddr)
 			if err != nil {
-				n.logger.Errorf("did not connect: %v", err)
 				return
 			}
 
@@ -566,11 +599,11 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 	return &doogle.GetIndexReply{Items: ret}, nil
 }
 
-func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.Empty, error) {
+func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.StringMessage, error) {
 	// analyze the given url
 	title, tokens, eURLs, err := n.crawler.AnalyzePage(in.Message)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to analyze to url: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to analyze url(=%s): %v", in.Message, err)
 	}
 
 	di := &doogle.StoreItemRequest{
@@ -591,7 +624,7 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 			continue
 		}
 
-		// if the reply is empty, Store item into its own table
+		// if the reply is empty, store item into its own table
 		if len(rep) == 0 {
 			_, err = n.StoreItem(context.Background(), di)
 			if err != nil {
@@ -604,12 +637,12 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					conn, err := grpc.Dial(ni.NetworkAddress, grpc.WithInsecure())
-					defer conn.Close()
+
+					conn, err := n.getConnByNetworkAddress(ni.NetworkAddress)
 					if err != nil {
-						n.logger.Errorf("did not connect: %v", err)
 						return
 					}
+
 					c := doogle.NewDoogleClient(conn)
 					_, err = c.StoreItem(context.Background(), di)
 					if err != nil {
@@ -621,12 +654,12 @@ func (n *Node) PostUrl(ctx context.Context, in *doogle.StringMessage) (*doogle.E
 			wg.Wait()
 		}
 	}
-	return &doogle.Empty{}, nil
+	return &doogle.StringMessage{Message: "post url finished"}, nil
 }
 
-func (n *Node) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate) (*doogle.StringMessage, error) {
+func (n *Node) PingWithCertificate(ctx context.Context, in *doogle.NodeCertificate) (*doogle.NodeCertificate, error) {
 	if n.isValidSender(in) {
-		return &doogle.StringMessage{Message: "pong"}, nil
+		return n.certificate, nil
 	}
 	return nil, status.Error(codes.InvalidArgument, "invalid certificate")
 }
@@ -647,7 +680,12 @@ func (n *Node) PingTo(ctx context.Context, in *doogle.NodeInfo) (*doogle.StringM
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "c.Ping failed: %v", err)
 	}
-	return &doogle.StringMessage{Message: r.Message}, nil
+
+	if n.isValidSender(r) {
+		return &doogle.StringMessage{Message: "pong"}, nil
+	}
+
+	return nil, status.Errorf(codes.Internal, "recipient is invalid")
 }
 
 func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Crawler) (*Node, error) {
@@ -686,7 +724,5 @@ func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Cra
 		Nonce:          node.nonce,
 		Difficulty:     int32(node.difficulty),
 	}
-
-	// TODO: start PageRank computing scheduler
 	return &node, nil
 }
