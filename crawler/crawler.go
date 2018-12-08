@@ -6,6 +6,9 @@ import (
 	"regexp"
 	"strings"
 
+	"context"
+	"time"
+
 	"github.com/mathetake/doogle/grpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -29,7 +32,7 @@ type doogleCrawler struct {
 
 var _ Crawler = &doogleCrawler{}
 
-func NewCrawler(cap int, logger *logrus.Logger) (Crawler, error) {
+func NewCrawler(queueCap, numWorker int, logger *logrus.Logger) (Crawler, error) {
 	tRegex, err := regexp.Compile("([a-z0-9]+)")
 	if err != nil {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
@@ -40,12 +43,18 @@ func NewCrawler(cap int, logger *logrus.Logger) (Crawler, error) {
 		return nil, errors.Errorf("failed to compile tokenRegexp: %v", err)
 	}
 
-	return &doogleCrawler{
+	crawler := &doogleCrawler{
 		tokenRegex: tRegex,
 		urlRegex:   urlRegex,
 		logger:     logger,
-		queue:      make(chan string, cap),
-	}, nil
+		queue:      make(chan string, queueCap),
+	}
+
+	for i := 0; i < numWorker; i++ {
+		go crawler.worker(i)
+	}
+
+	return crawler, nil
 }
 
 func (c *doogleCrawler) SetDoogleClient(cl doogle.DoogleClient) {
@@ -76,6 +85,30 @@ func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, err
 
 	defer res.Body.Close()
 	return c.analyze(res.Body)
+}
+
+func (c *doogleCrawler) worker(id int) {
+	c.logger.Infof("%d-th worker started", id)
+
+	for {
+		time.Sleep(time.Second)
+
+		v, _ := <-c.queue
+		_, _, urls, err := c.AnalyzePage(v)
+		if err != nil {
+			c.logger.Errorf("AnalyzePage failed : %v", err)
+			continue
+		}
+
+		for _, url := range urls {
+			_, err := c.dClient.PostUrl(context.Background(), &doogle.StringMessage{
+				Message: url,
+			})
+			if err != nil {
+				c.logger.Errorf("PostUrl failed : %v", err)
+			}
+		}
+	}
 }
 
 func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, error) {

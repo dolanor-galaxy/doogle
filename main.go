@@ -4,15 +4,12 @@ import (
 	"encoding/hex"
 	"flag"
 	"net"
-
-	"github.com/mathetake/doogle/crawler"
-
 	"os"
 	"os/signal"
 	"syscall"
-
 	"time"
 
+	"github.com/mathetake/doogle/crawler"
 	"github.com/mathetake/doogle/grpc"
 	"github.com/mathetake/doogle/node"
 	"github.com/sirupsen/logrus"
@@ -23,7 +20,8 @@ import (
 var (
 	port       string
 	difficulty int
-	cap        int
+	queueCap   int
+	numWorker  int
 )
 
 func main() {
@@ -33,7 +31,8 @@ func main() {
 	// parse params
 	flag.StringVar(&port, "p", "", "port for node")
 	flag.IntVar(&difficulty, "d", 0, "difficulty for cryptographic puzzle")
-	flag.IntVar(&cap, "c", 0, "crawler's channel capacity")
+	flag.IntVar(&queueCap, "c", 0, "crawler's channel capacity")
+	flag.IntVar(&queueCap, "w", 0, "number of crawler's worker")
 	flag.Parse()
 
 	// listen port
@@ -43,7 +42,7 @@ func main() {
 	}
 
 	// create crawler
-	cr, err := crawler.NewCrawler(cap, logger)
+	cr, err := crawler.NewCrawler(queueCap, logger)
 	if err != nil {
 		logger.Fatalf("failed to initialize crawler: %v", err)
 	}
