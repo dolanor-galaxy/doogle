@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// create new node
-	srv, err := node.NewNode(difficulty, lis.Addr().String(), logger, cr)
+	srv, err := node.NewNode(difficulty, lis.Addr().String(), logger, cr, queueCap)
 	if err != nil {
 		logger.Fatalf("failed to create node: %v", err)
 	}
@@ -71,7 +71,7 @@ func main() {
 		}
 	}()
 
-	// TODO: start PageRank computing scheduler
+	srv.StartPageRankComputer(numWorker)
 
 	// make gRPC connection to doogle node for crawler service
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())

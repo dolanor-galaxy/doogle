@@ -31,10 +31,13 @@ type item struct {
 	title string
 
 	// outgoing hyperlinks
-	edges []doogleAddress
+	edges []doogleAddressStr
 
 	// localRank represents locally computed PageRank
-	localRank float64
+	localRank         float64
+	rankComputedCount float64
+
+	mux sync.Mutex
 }
 
 type Node struct {
@@ -70,6 +73,9 @@ type Node struct {
 
 	// string -> *grpc.ClientConn
 	nAddrToConn sync.Map
+
+	// pageRank computing queue
+	pageRankComputingQueue chan doogleAddressStr
 }
 
 var _ doogle.DoogleServer = &Node{}
@@ -184,9 +190,10 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		return nil, status.Error(codes.InvalidArgument, "invalid certificate")
 	}
 
-	es := make([]doogleAddress, len(in.EdgeURLs))
+	es := make([]doogleAddressStr, len(in.EdgeURLs))
 	for i, e := range in.EdgeURLs {
-		es[i] = sha1.Sum([]byte(e))
+		h := sha1.Sum([]byte(e))
+		es[i] = doogleAddressStr(h[:])
 	}
 
 	// calc item's address
@@ -202,6 +209,7 @@ func (n *Node) StoreItem(ctx context.Context, in *doogle.StoreItemRequest) (*doo
 		dAddrStr: itemAddr,
 		title:    in.Title,
 		edges:    es,
+		mux:      sync.Mutex{},
 	}
 
 	// store item on index
@@ -398,6 +406,14 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 	targetAddr := sha1.Sum([]byte(in.Message))
 	var targetAddrStr = doogleAddressStr(targetAddr[:])
 
+	// enqueue PageRank computer
+	go func() {
+		select {
+		case n.pageRankComputingQueue <- targetAddrStr:
+		default: // if the queue is full, ignore it
+		}
+	}()
+
 	res, err := n.findIndex(ctx, targetAddrStr)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "findIndex failed: %v", err)
@@ -483,22 +499,22 @@ func (n *Node) GetIndex(ctx context.Context, in *doogle.StringMessage) (*doogle.
 					}
 					mux.Unlock()
 				}
-			} else {
-				res, _ := res.Result.(*doogle.FindIndexReply_NodeInfos)
-				for _, ni := range res.NodeInfos.Infos {
-					conn, err := n.getConnByNetworkAddress(ni.NetworkAddress)
-					if err != nil {
-						return
-					}
-
-					c := doogle.NewDoogleClient(conn)
-					res, err := c.PingWithCertificate(context.Background(), n.certificate)
-					if err != nil {
-						n.logger.Errorf("failed to PingWithCertificate")
-						return
-					}
-					n.isValidSender(res)
+				return
+			}
+			res, _ := res.Result.(*doogle.FindIndexReply_NodeInfos)
+			for _, ni := range res.NodeInfos.Infos {
+				conn, err := n.getConnByNetworkAddress(ni.NetworkAddress)
+				if err != nil {
+					return
 				}
+
+				c := doogle.NewDoogleClient(conn)
+				res, err := c.PingWithCertificate(context.Background(), n.certificate)
+				if err != nil {
+					n.logger.Errorf("failed to PingWithCertificate")
+					return
+				}
+				n.isValidSender(res)
 			}
 		}()
 	}
@@ -638,7 +654,7 @@ func (n *Node) CloseConnections() {
 	})
 }
 
-func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Crawler) (*Node, error) {
+func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Crawler, queueCap int) (*Node, error) {
 	pk, sk, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate encryption keys")
@@ -653,12 +669,13 @@ func NewNode(difficulty int, nAddr string, logger *logrus.Logger, cr crawler.Cra
 
 	// set node parameters
 	node := Node{
-		publicKey:    pk,
-		secretKey:    sk,
-		difficulty:   difficulty,
-		routingTable: rt,
-		logger:       logger,
-		crawler:      cr,
+		publicKey:              pk,
+		secretKey:              sk,
+		difficulty:             difficulty,
+		routingTable:           rt,
+		logger:                 logger,
+		crawler:                cr,
+		pageRankComputingQueue: make(chan doogleAddressStr, queueCap),
 	}
 
 	// solve network puzzle

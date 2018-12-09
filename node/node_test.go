@@ -75,7 +75,7 @@ func runServer(difficulty int, logger *logrus.Logger) (*Node, string) {
 	}
 
 	port := ":" + strings.Split(lis.Addr().String(), ":")[1]
-	node, err := NewNode(difficulty, localhost+port, logger, &mockCrawler{})
+	node, err := NewNode(difficulty, localhost+port, logger, &mockCrawler{}, 0)
 	if err != nil {
 		log.Fatalf("failed to craete new node: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestNode_IsValidSender(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			c := cc
-			node, err := NewNode(2, "bar", logger, nil)
+			node, err := NewNode(2, "bar", logger, nil, 0)
 			if err != nil {
 				t.Fatalf("failed to create new node: %v", err)
 			}
@@ -870,8 +870,7 @@ func TestNode_PostUrl(t *testing.T) {
 
 				for i, eu := range c.cr.edgeURLs {
 					h = sha1.Sum([]byte(eu))
-					expAddr := doogleAddress(h)
-					assert.Equal(t, expAddr, it.edges[i])
+					assert.Equal(t, doogleAddressStr(h[:]), it.edges[i])
 				}
 
 				dhtV.mux.Unlock()
