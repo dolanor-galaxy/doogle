@@ -86,7 +86,7 @@ func (n *Node) computeLocalRank(key doogleAddressStr) error {
 		}
 
 		for _, edge := range it.edges {
-			if toID, ok := addrToID[edge]; ok && g.Has(toID) {
+			if toID, ok := addrToID[edge]; ok && g.Node(toID) != nil {
 				g.SetEdge(simple.Edge{F: simple.Node(fromID), T: simple.Node(toID)})
 			} else {
 				// set edge to world node
