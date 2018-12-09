@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
 	"time"
 
 	"github.com/mathetake/doogle/grpc"
@@ -161,7 +160,7 @@ func TestDoogleCrawler_analyze(t *testing.T) {
 		c := cc
 		t.Run(fmt.Sprintf("%d-th case", i), func(t *testing.T) {
 			body := strings.NewReader(c.target)
-			aTitle, aTokens, aEdgeURLs, err := cr.analyze(body)
+			aTitle, aTokens, aEdgeURLs, err := cr.analyze(body, "")
 			if err != nil {
 				panic(err)
 			}

@@ -64,8 +64,8 @@ Connecting to doogle.Doogle on localhost:12312. Available globals:
   client - the client connection to Doogle
     storeItem (StoreItemRequest, callback) returns Empty
     findIndex (FindIndexRequest, callback) returns FindIndexReply
-    findNode (FindNodeRequest, callback) returns FindeNodeReply
-    pingWithCertificate (NodeCertificate, callback) returns StringMessage
+    findNode (FindNodeRequest, callback) returns NodeInfos
+    pingWithCertificate (NodeCertificate, callback) returns NodeCertificate
     ping (StringMessage, callback) returns StringMessage
     pingTo (NodeInfo, callback) returns StringMessage
     getIndex (StringMessage, callback) returns GetIndexReply

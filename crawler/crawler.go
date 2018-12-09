@@ -83,7 +83,7 @@ func (c *doogleCrawler) AnalyzePage(url string) (string, []string, []string, err
 	}
 
 	defer res.Body.Close()
-	return c.analyze(res.Body)
+	return c.analyze(res.Body, url)
 }
 
 func (c *doogleCrawler) worker(id int) {
@@ -110,13 +110,14 @@ func (c *doogleCrawler) worker(id int) {
 	}
 }
 
-func (c *doogleCrawler) analyze(body io.Reader) (string, []string, []string, error) {
+func (c *doogleCrawler) analyze(body io.Reader, target string) (string, []string, []string, error) {
 	doc := html.NewTokenizer(body)
 	var title string
 	var tokens []string
 	var edgeURLs []string
 
-	selected := map[string]interface{}{}
+	selected := map[string]struct{}{}
+	selected[target] = struct{}{}
 
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
