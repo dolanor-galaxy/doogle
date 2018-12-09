@@ -1,9 +1,8 @@
 package node
 
 import (
-	"sync"
-
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"

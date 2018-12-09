@@ -2,9 +2,8 @@ package node
 
 import (
 	"fmt"
-	"testing"
-
 	"sync"
+	"testing"
 
 	"gotest.tools/assert"
 )
